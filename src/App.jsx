@@ -38,15 +38,15 @@ const TIME_SLOTS = [
 ];
 
 const INITIAL_RESERVATIONS = [
-  { id: 'res_101', week: 'this_week', day: 'Wednesday', room: '31', slot: '8:30 AM', time_in: '8:30 AM', time_out: '10:30 AM', barcode: 'w2195408', student_name: 'Student 1', people: 3, any_room: false, status: 'Completed', notes: 'Group study' },
-  { id: 'res_102', week: 'this_week', day: 'Wednesday', room: '31', slot: '9:30 AM', time_in: '9:30 AM', time_out: '11:30 AM', barcode: '2208365', student_name: 'Rebecca', people: 2, any_room: true, status: 'Completed', notes: '' },
+  { id: 'res_101', week: 'this_week', day: 'Wednesday', room: '31', slot: '8:30 AM', time_in: '8:30 AM', time_out: '10:30 AM', barcode: 'w2195408', student_name: 'Student 1', people: 3, any_room: false, status: 'Checked Out', notes: 'Group study' },
+  { id: 'res_102', week: 'this_week', day: 'Wednesday', room: '31', slot: '9:30 AM', time_in: '9:30 AM', time_out: '11:30 AM', barcode: '2208365', student_name: 'Rebecca', people: 2, any_room: true, status: 'Checked Out', notes: '' },
   { id: 'res_105', week: 'this_week', day: 'Wednesday', room: '31', slot: '1:30 PM', time_in: '1:30 PM', time_out: '', barcode: 'w2156737', student_name: 'Student 2', people: 1, any_room: false, status: 'Checked-In', notes: '' },
-  { id: 'res_107', week: 'this_week', day: 'Wednesday', room: '33', slot: '9:00 AM', time_in: '9:00 AM', time_out: '11:00 AM', barcode: 'w2216701', student_name: 'Sarah', people: 1, any_room: true, status: 'Completed', notes: 'WebCam needed' },
+  { id: 'res_107', week: 'this_week', day: 'Wednesday', room: '33', slot: '9:00 AM', time_in: '9:00 AM', time_out: '11:00 AM', barcode: 'w2216701', student_name: 'Sarah', people: 1, any_room: true, status: 'Checked Out', notes: 'WebCam needed' },
   { id: 'res_110', week: 'this_week', day: 'Wednesday', room: '33', slot: '2:30 PM', time_in: '2:30 PM', time_out: '', barcode: 'w1889324', student_name: 'Ryan', people: 1, any_room: false, status: 'Checked-In', notes: '' },
-  { id: 'res_111', week: 'this_week', day: 'Wednesday', room: '33', slot: '4:30 PM', time_in: '4:30 PM', time_out: '6:30 PM', barcode: '', student_name: 'Roman', people: 1, any_room: false, status: 'Scheduled', notes: '' },
-  { id: 'res_112', week: 'this_week', day: 'Wednesday', room: '34', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '', student_name: 'Lilly', people: 1, any_room: false, status: 'Completed', notes: '' },
-  { id: 'res_116', week: 'this_week', day: 'Wednesday', room: '59', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '2218883', student_name: 'Zoey', people: 1, any_room: false, status: 'Completed', notes: '' },
-  { id: 'res_119', week: 'this_week', day: 'Wednesday', room: '59', slot: '3:30 PM', time_in: '3:30 PM', time_out: '5:30 PM', barcode: '', student_name: 'Sarah', people: 2, any_room: true, status: 'Scheduled', notes: '' }
+  { id: 'res_111', week: 'this_week', day: 'Wednesday', room: '33', slot: '4:30 PM', time_in: '4:30 PM', time_out: '6:30 PM', barcode: '', student_name: 'Roman', people: 1, any_room: false, status: 'Reserved', notes: '' },
+  { id: 'res_112', week: 'this_week', day: 'Wednesday', room: '34', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '', student_name: 'Lilly', people: 1, any_room: false, status: 'Checked Out', notes: '' },
+  { id: 'res_116', week: 'this_week', day: 'Wednesday', room: '59', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '2218883', student_name: 'Zoey', people: 1, any_room: false, status: 'Checked Out', notes: '' },
+  { id: 'res_119', week: 'this_week', day: 'Wednesday', room: '59', slot: '3:30 PM', time_in: '3:30 PM', time_out: '5:30 PM', barcode: '', student_name: 'Sarah', people: 2, any_room: true, status: 'Reserved', notes: '' }
 ];
 
 const INITIAL_TURNAWAYS = [
@@ -67,7 +67,7 @@ export default function App() {
   const [activeRes, setActiveRes] = useState(null);
 
   const [formData, setFormData] = useState({
-    room: '31', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '', student_name: '', people: 1, any_room: false, notes: '', status: 'Scheduled'
+    room: '31', time_in: '8:00 AM', time_out: '', barcode: '', student_name: '', people: 1, any_room: false, notes: '', status: 'Reserved'
   });
 
   const handleIncrementTurnAway = (slot) => {
@@ -95,19 +95,18 @@ export default function App() {
       setFormData({ any_room: false, ...existing });
     } else {
       const startIdx = DETAILED_TIMES.indexOf(initialSlot) !== -1 ? DETAILED_TIMES.indexOf(initialSlot) : 0;
-      const defaultOutIdx = Math.min(startIdx + 12, DETAILED_TIMES.length - 1);
       
       setActiveRes(null);
       setFormData({ 
         room, 
         time_in: DETAILED_TIMES[startIdx] || '8:00 AM', 
-        time_out: DETAILED_TIMES[defaultOutIdx] || '10:00 AM', 
+        time_out: '', // Defaults to blank / null
         barcode: '', 
         student_name: '', 
         people: 1, 
         any_room: false,
         notes: '', 
-        status: 'Scheduled' 
+        status: 'Reserved' 
       });
     }
     setModalOpen(true);
@@ -138,7 +137,7 @@ export default function App() {
 
   const handleCheckOut = (res) => {
     const timeOut = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-    setReservations(reservations.map(r => r.id === res.id ? { ...r, status: 'Completed', time_out: timeOut } : r));
+    setReservations(reservations.map(r => r.id === res.id ? { ...r, status: 'Checked Out', time_out: timeOut } : r));
     setModalOpen(false);
   };
 
@@ -206,8 +205,8 @@ export default function App() {
                 className="pl-9 pr-3 py-1.5 bg-slate-800 text-sm text-white rounded-lg border border-slate-700 focus:outline-none focus:border-blue-400"
               />
             </div>
-            <div className="flex items-center gap-2 bg-amber-900/40 border border-amber-600/50 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-200">
-              <AlertCircle className="w-4 h-4 text-amber-400" /> Total Turn-Aways Today: <span className="text-sm font-bold text-white">{activeTurnAways.length}</span>
+            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200">
+              <AlertCircle className="w-4 h-4 text-slate-400" /> Total Turn-Aways Today: <span className="text-sm font-bold text-white">{activeTurnAways.length}</span>
             </div>
           </div>
         </div>
@@ -242,14 +241,15 @@ export default function App() {
             <table className="w-full text-left border-collapse table-fixed min-w-[900px]">
               <thead>
                 <tr>
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[10%] text-center border-b border-slate-700">
-                    Time
-                  </th>
-                  <th className="p-3 bg-amber-900/90 text-amber-100 text-xs uppercase tracking-wider w-[14%] text-center border-b border-slate-700 border-r border-slate-700">
+                  {/* Turn-Away column is now on the far left, styled in black & white to match Time */}
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[12%] text-center border-b border-slate-700 border-r border-slate-700">
                     Turn-Away
                   </th>
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[10%] text-center border-b border-slate-700 border-r border-slate-700">
+                    Time
+                  </th>
                   {ROOMS.map(room => (
-                    <th key={room.id} className={`p-3 text-xs uppercase tracking-wider text-center font-bold border-b border-slate-200 w-[19%] ${room.headerBg}`}>
+                    <th key={room.id} className={`p-3 text-xs uppercase tracking-wider text-center font-bold border-b border-slate-200 w-[19.5%] ${room.headerBg}`}>
                       {room.name}
                     </th>
                   ))}
@@ -260,12 +260,9 @@ export default function App() {
                   const slotTurnAwayCount = activeTurnAways.filter(t => t.slot === slot).length;
 
                   return (
-                    <tr key={slot} className="hover:bg-slate-100/80">
-                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 border-r border-slate-200 whitespace-nowrap text-xs">
-                        {slot}
-                      </td>
-
-                      <td className="p-2 bg-amber-50/50 border-r border-slate-200 text-center">
+                    <tr key={slot} className="h-16 hover:bg-slate-100/80">
+                      {/* Turn-Away Column (Left of Time, Black & White Styling) */}
+                      <td className="p-2 bg-slate-50 border-r border-slate-200 text-center h-16 align-middle">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => handleDecrementTurnAway(slot)}
@@ -273,25 +270,30 @@ export default function App() {
                             title="Remove 1 turn-away entry (correction)"
                             className={`p-1 rounded transition border ${
                               slotTurnAwayCount > 0 
-                                ? 'bg-white hover:bg-amber-100 text-amber-800 border-amber-300 shadow-sm cursor-pointer' 
+                                ? 'bg-white hover:bg-slate-200 text-slate-800 border-slate-400 shadow-sm cursor-pointer' 
                                 : 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
                             }`}
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
 
-                          <span className={`min-w-[20px] text-xs font-bold ${slotTurnAwayCount > 0 ? 'text-amber-900' : 'text-slate-400'}`}>
+                          <span className={`min-w-[20px] text-xs font-bold ${slotTurnAwayCount > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
                             {slotTurnAwayCount}
                           </span>
 
                           <button
                             onClick={() => handleIncrementTurnAway(slot)}
                             title="Add 1 turn-away entry"
-                            className="p-1 rounded bg-amber-600 hover:bg-amber-700 text-white border border-amber-700 shadow-sm transition cursor-pointer"
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-900 text-white border border-slate-900 shadow-sm transition cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      </td>
+
+                      {/* Time Column */}
+                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 border-r border-slate-200 whitespace-nowrap text-xs h-16 align-middle">
+                        {slot}
                       </td>
 
                       {ROOMS.map(room => {
@@ -305,28 +307,28 @@ export default function App() {
                           : room.gradientBg;
 
                         return (
-                          <td key={room.id} className={`p-2 border-r border-slate-200 text-center transition-colors ${
+                          <td key={room.id} className={`p-2 border-r border-slate-200 text-center transition-colors h-16 align-middle ${
                             isUnavailable ? room.occupiedBg : room.colBg
                           }`}>
                             {isFullBlock ? (
-                              <button onClick={() => handleOpenModal(room.id, slot, res)} className={`w-full p-2 rounded-lg text-xs font-semibold border text-left transition shadow-sm ${cardBgClass}`}>
-                                <div className="font-bold flex justify-between">
+                              <button onClick={() => handleOpenModal(room.id, slot, res)} className={`w-full h-full p-2 rounded-lg text-xs font-semibold border text-left transition shadow-sm flex flex-col justify-center ${cardBgClass}`}>
+                                <div className="font-bold flex justify-between items-center">
                                   <span>{res.student_name}</span> 
                                   <span className="text-[10px] opacity-80">[{res.status}]</span>
                                 </div>
                                 <div className="text-[10px] opacity-80 mt-0.5">
-                                  🕒 {res.time_in} – {res.time_out || 'In Session (2 hr window)'}
+                                  🕒 {res.time_in} – {res.time_out || 'In Session'}
                                 </div>
                                 <div className="text-[10px] opacity-75 mt-0.5">
                                   {res.people} Person(s) {res.barcode && `• ${res.barcode}`}
                                 </div>
                               </button>
                             ) : isUnavailable ? (
-                              <button onClick={() => handleOpenModal(room.id, slot)} className="w-full py-2 border border-dashed border-slate-300/80 bg-white/40 hover:bg-white/80 rounded-lg text-slate-500 hover:text-blue-600 text-xs transition flex items-center justify-center gap-1 font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span> Unavailable
+                              <button onClick={() => handleOpenModal(room.id, slot)} className="w-full h-full py-2 border border-dashed border-slate-300/80 bg-white/40 hover:bg-white/80 rounded-lg text-slate-500 hover:text-blue-600 text-xs transition flex items-center justify-center gap-1 font-medium">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 inline-block"></span> Unavailable
                               </button>
                             ) : (
-                              <button onClick={() => handleOpenModal(room.id, slot)} className="w-full py-2 border border-dashed border-slate-300 bg-white/70 hover:bg-white rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-600 text-xs transition">
+                              <button onClick={() => handleOpenModal(room.id, slot)} className="w-full h-full py-2 border border-dashed border-slate-300 bg-white/70 hover:bg-white rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-600 text-xs transition flex items-center justify-center">
                                 + Book
                               </button>
                             )}
@@ -366,7 +368,7 @@ export default function App() {
                       <XAxis dataKey="time" interval={3} />
                       <YAxis allowDecimals={false} />
                       <Tooltip />
-                      <Bar dataKey="turnAways" fill="#d97706" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="turnAways" fill="#475569" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -418,7 +420,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Any Room Checkbox strictly labeled "Any Room" */}
                 <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                   <input 
                     type="checkbox" 
@@ -451,7 +452,7 @@ export default function App() {
                       onChange={(e) => setFormData({ ...formData, time_out: e.target.value })} 
                       className="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">(In Session - No Check-Out)</option>
+                      <option value="">(None - In Session)</option>
                       {DETAILED_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
@@ -464,7 +465,7 @@ export default function App() {
               </div>
 
               <div className="flex justify-between items-center pt-3 border-t">
-                {activeRes && activeRes.status === 'Scheduled' && (
+                {activeRes && activeRes.status === 'Reserved' && (
                   <button onClick={() => handleCheckIn(activeRes)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-lg font-semibold">Check In Now</button>
                 )}
                 {activeRes && activeRes.status === 'Checked-In' && (
