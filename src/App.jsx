@@ -317,35 +317,34 @@ export default function App() {
 
         {activeTab === 'schedule' ? (
           <div className="bg-white rounded-xl shadow border border-slate-200 overflow-x-auto">
-            <table className="w-full text-left border-collapse table-fixed min-w-[950px]">
+            <table className="w-full text-left border-collapse table-fixed min-w-[900px]">
               <thead>
                 <tr>
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[9%] text-center border-b border-slate-700 border-r border-slate-700">
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[10%] text-center border-b border-slate-700 border-r border-slate-700">
                     Time
                   </th>
                   
                   {ROOMS.map(room => (
-                    <th key={room.id} className={`p-3 text-xs uppercase tracking-wider text-center font-bold border-b border-slate-200 w-[17.5%] ${room.headerBg}`}>
+                    <th key={room.id} className={`p-3 text-xs uppercase tracking-wider text-center font-bold border-b border-slate-200 w-[19.5%] ${room.headerBg}`}>
                       {room.name}
                     </th>
                   ))}
 
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[12%] text-center border-b border-slate-700 border-r border-slate-700">
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[12%] text-center border-b border-slate-700">
                     Turn-Away
-                  </th>
-
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[9%] text-center border-b border-slate-700">
-                    Time
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 text-sm">
-                {TIME_SLOTS.map(slot => {
+              <tbody className="divide-y divide-slate-200/80 text-sm">
+                {TIME_SLOTS.map((slot, idx) => {
                   const slotTurnAwayCount = activeTurnAways.filter(t => t.slot === slot).length;
+                  const rowBgGradientClass = idx % 2 === 0 
+                    ? 'bg-gradient-to-r from-slate-50/90 via-slate-50/50 to-slate-50/90' 
+                    : 'bg-white';
 
                   return (
-                    <tr key={slot} className="h-16 hover:bg-slate-100/80">
-                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 border-r border-slate-200 whitespace-nowrap text-xs h-16 align-middle">
+                    <tr key={slot} className={`h-16 ${rowBgGradientClass} hover:bg-slate-100/70 transition-colors`}>
+                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50/90 border-r border-slate-200 whitespace-nowrap text-xs h-16 align-middle">
                         {slot}
                       </td>
 
@@ -400,7 +399,7 @@ export default function App() {
                         );
                       })}
 
-                      <td className="p-2 bg-slate-50 text-center h-16 align-middle border-r border-slate-200">
+                      <td className="p-2 bg-slate-50/90 text-center h-16 align-middle border-l border-slate-200">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => handleDecrementTurnAway(slot)}
@@ -427,10 +426,6 @@ export default function App() {
                             <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      </td>
-
-                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 whitespace-nowrap text-xs h-16 align-middle">
-                        {slot}
                       </td>
                     </tr>
                   );
