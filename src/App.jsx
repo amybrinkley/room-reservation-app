@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, BarChart2, Search, X, MapPin, Plus, Minus } from 'lucide-react';
+import { Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, BarChart2, X, MapPin, Plus, Minus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 // Set your Google Apps Script Web App URL here after deployment
@@ -85,13 +85,17 @@ export default function App() {
   const [selectedDay, setSelectedDay] = useState(getCurrentDayName);
   const [reservations, setReservations] = useState(INITIAL_RESERVATIONS);
   const [turnAways, setTurnAways] = useState(INITIAL_TURNAWAYS);
-  const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [activeRes, setActiveRes] = useState(null);
 
   const [formData, setFormData] = useState({
     room: '31', time_in: '8:00 AM', time_out: '', barcode: '', student_name: '', people: 1, any_room: false, notes: '', status: 'Reserved'
   });
+
+  const handleResetToToday = () => {
+    setSelectedWeek('this_week');
+    setSelectedDay(getCurrentDayName());
+  };
 
   const handleIncrementTurnAway = (slot) => {
     const newEntry = {
@@ -169,11 +173,12 @@ export default function App() {
   };
 
   const filteredReservations = reservations.filter(r => 
-    r.week === selectedWeek && r.day === selectedDay &&
-    (searchQuery === '' || r.student_name.toLowerCase().includes(searchQuery.toLowerCase()) || r.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
+    r.week === selectedWeek && r.day === selectedDay
   );
 
   const activeTurnAways = turnAways.filter(t => t.week === selectedWeek && t.day === selectedDay);
+
+  const totalOccupancyToday = filteredReservations.reduce((sum, res) => sum + (Number(res.people) || 0), 0);
 
   const parseTimeToMinutes = (timeStr) => {
     if (!timeStr) return null;
@@ -200,7 +205,8 @@ export default function App() {
       const effectiveEndMinutes = endMinutes !== null ? endMinutes : startMinutes + 120;
 
       const startSlotRowMinutes = Math.floor(startMinutes / 30) * 30;
-      const endSlotRowMinutes = Math.ceil(effectiveEndMinutes / 30) * 30;
+      let endSlotRowMinutes = Math.ceil(effectiveEndMinutes / 30) * 30;
+      if (endSlotRowMinutes === startSlotRowMinutes) endSlotRowMinutes += 30;
 
       const totalSpanRows = Math.max(1, Math.round((endSlotRowMinutes - startSlotRowMinutes) / 30));
 
@@ -252,27 +258,28 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-slate-800">
+    <div className="min-h-screen bg-white font-sans text-slate-800">
       <header className="bg-slate-900 text-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <Calendar className="w-8 h-8 text-blue-400" />
             <div>
-              <h1 className="text-xl font-bold">Library Room Reservations</h1>
-              <p className="text-xs text-slate-400">Front Desk Tracking & Analytics System</p>
+              <h1 className="text-xl font-bold">Library Study Rooms</h1>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search ID# or Name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-3 py-1.5 bg-slate-800 text-sm text-white rounded-lg border border-slate-700 focus:outline-none focus:border-blue-400"
-              />
+            <button
+              onClick={handleResetToToday}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs transition shadow-sm"
+              title="Return schedule to today"
+            >
+              Today
+            </button>
+
+            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200">
+              <Users className="w-4 h-4 text-blue-400" /> Total Occupancy Today: <span className="text-sm font-bold text-white">{totalOccupancyToday}</span>
             </div>
+
             <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200">
               <AlertCircle className="w-4 h-4 text-slate-400" /> Total Turn-Aways Today: <span className="text-sm font-bold text-white">{activeTurnAways.length}</span>
             </div>
