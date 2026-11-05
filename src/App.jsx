@@ -208,7 +208,7 @@ export default function App() {
       let endSlotRowMinutes = Math.ceil(effectiveEndMinutes / 30) * 30;
       if (endSlotRowMinutes === startSlotRowMinutes) endSlotRowMinutes += 30;
 
-      const totalSpanRows = Math.max(1, Math.round((endSlotRowMinutes - startSlotRowMinutes) / 30));
+      const totalSpanRows = Math.max(1, Math.ceil((effectiveEndMinutes - startSlotRowMinutes) / 30));
 
       if (currentSlotMinutes === startSlotRowMinutes) {
         const topOffsetPct = ((startMinutes - startSlotRowMinutes) / 30) * 100;
@@ -261,21 +261,35 @@ export default function App() {
     <div className="min-h-screen bg-white font-sans text-slate-800">
       <header className="bg-slate-900 text-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-8 h-8 text-blue-400" />
-            <div>
-              <h1 className="text-xl font-bold">Library Study Rooms</h1>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              <Calendar className="w-8 h-8 text-blue-400" />
+              <div>
+                <h1 className="text-xl font-bold">Library Study Rooms</h1>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-lg border border-slate-700 text-xs font-semibold">
+              <button 
+                onClick={() => setActiveTab('schedule')} 
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition ${
+                  activeTab === 'schedule' ? 'bg-blue-600 text-white shadow' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" /> Schedule
+              </button>
+              <button 
+                onClick={() => setActiveTab('analytics')} 
+                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition ${
+                  activeTab === 'analytics' ? 'bg-blue-600 text-white shadow' : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <BarChart2 className="w-3.5 h-3.5" /> Usage Analytics
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleResetToToday}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs transition shadow-sm"
-              title="Return schedule to today"
-            >
-              Today
-            </button>
 
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200">
               <Users className="w-4 h-4 text-blue-400" /> Total Occupancy Today: <span className="text-sm font-bold text-white">{totalOccupancyToday}</span>
             </div>
@@ -290,11 +304,12 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveTab('schedule')} className={`px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-2 ${activeTab === 'schedule' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-300'}`}>
-              <Calendar className="w-4 h-4" /> Schedule Matrix
-            </button>
-            <button onClick={() => setActiveTab('analytics')} className={`px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-2 ${activeTab === 'analytics' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-300'}`}>
-              <BarChart2 className="w-4 h-4" /> Usage Analytics
+            <button
+              onClick={handleResetToToday}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm transition shadow-sm"
+              title="Return schedule to today"
+            >
+              Today
             </button>
           </div>
 
