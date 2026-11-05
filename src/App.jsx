@@ -100,7 +100,7 @@ export default function App() {
       setFormData({ 
         room, 
         time_in: DETAILED_TIMES[startIdx] || '8:00 AM', 
-        time_out: '', // Defaults to blank / null
+        time_out: '', 
         barcode: '', 
         student_name: '', 
         people: 1, 
@@ -148,28 +148,44 @@ export default function App() {
 
   const activeTurnAways = turnAways.filter(t => t.week === selectedWeek && t.day === selectedDay);
 
-  const getOccupancyInfo = (roomId, slot) => {
-    const slotIndex = TIME_SLOTS.indexOf(slot);
-    if (slotIndex === -1) return null;
+  // Helper to convert time string (e.g. "8:30 AM") to minutes from midnight
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr) return null;
+    const parts = timeStr.trim().split(' ');
+    if (parts.length < 2) return null;
+    const [time, period] = parts;
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
 
-    for (let offset = 0; offset < 4; offset++) {
-      const checkIdx = slotIndex - offset;
-      if (checkIdx >= 0) {
-        const checkSlot = TIME_SLOTS[checkIdx];
-        const res = filteredReservations.find(r => r.room === roomId && (r.slot === checkSlot || r.time_in === checkSlot));
-        
-        if (res) {
-          if (!res.time_out || res.time_out.trim() === '') {
-            return { reservation: res, displayType: 'full_reservation', offset };
-          }
-          if (offset === 0) {
-            return { reservation: res, displayType: 'full_reservation', offset: 0 };
-          } else {
-            return { reservation: res, displayType: 'unavailable', offset };
-          }
-        }
+  const getOccupancyInfo = (roomId, slot) => {
+    const currentSlotMinutes = parseTimeToMinutes(slot);
+    if (currentSlotMinutes === null) return null;
+
+    // Check all reservations in this room
+    const roomReservations = filteredReservations.filter(r => r.room === roomId);
+
+    for (let res of roomReservations) {
+      const startMinutes = parseTimeToMinutes(res.time_in || res.slot);
+      if (startMinutes === null) continue;
+
+      const endMinutes = res.time_out ? parseTimeToMinutes(res.time_out) : null;
+
+      // If slot matches start time, render the full reservation card
+      if (currentSlotMinutes === startMinutes) {
+        return { reservation: res, displayType: 'full_reservation' };
+      }
+
+      // If slot falls between start time and end time (or if end time is blank, up to 2 hours default window)
+      const effectiveEndMinutes = endMinutes !== null ? endMinutes : startMinutes + 120;
+
+      if (currentSlotMinutes > startMinutes && currentSlotMinutes < effectiveEndMinutes) {
+        return { reservation: res, displayType: 'unavailable' };
       }
     }
+
     return null;
   };
 
@@ -238,21 +254,26 @@ export default function App() {
 
         {activeTab === 'schedule' ? (
           <div className="bg-white rounded-xl shadow border border-slate-200 overflow-x-auto">
-            <table className="w-full text-left border-collapse table-fixed min-w-[900px]">
+            <table className="w-full text-left border-collapse table-fixed min-w-[950px]">
               <thead>
                 <tr>
-                  {/* Turn-Away column is now on the far left, styled in black & white to match Time */}
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[12%] text-center border-b border-slate-700 border-r border-slate-700">
-                    Turn-Away
-                  </th>
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[10%] text-center border-b border-slate-700 border-r border-slate-700">
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[9%] text-center border-b border-slate-700 border-r border-slate-700">
                     Time
                   </th>
+                  
                   {ROOMS.map(room => (
-                    <th key={room.id} className={`p-3 text-xs uppercase tracking-wider text-center font-bold border-b border-slate-200 w-[19.5%] ${room.headerBg}`}>
+                    <th key={room.id} className={`p-3 text-xs uppercase tracking-wider text-center font-bold border-b border-slate-200 w-[17.5%] ${room.headerBg}`}>
                       {room.name}
                     </th>
                   ))}
+
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[9%] text-center border-b border-slate-700 border-r border-slate-700">
+                    Time
+                  </th>
+
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[12%] text-center border-b border-slate-700">
+                    Turn-Away
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-sm">
@@ -261,37 +282,6 @@ export default function App() {
 
                   return (
                     <tr key={slot} className="h-16 hover:bg-slate-100/80">
-                      {/* Turn-Away Column (Left of Time, Black & White Styling) */}
-                      <td className="p-2 bg-slate-50 border-r border-slate-200 text-center h-16 align-middle">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => handleDecrementTurnAway(slot)}
-                            disabled={slotTurnAwayCount === 0}
-                            title="Remove 1 turn-away entry (correction)"
-                            className={`p-1 rounded transition border ${
-                              slotTurnAwayCount > 0 
-                                ? 'bg-white hover:bg-slate-200 text-slate-800 border-slate-400 shadow-sm cursor-pointer' 
-                                : 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
-                            }`}
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-
-                          <span className={`min-w-[20px] text-xs font-bold ${slotTurnAwayCount > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
-                            {slotTurnAwayCount}
-                          </span>
-
-                          <button
-                            onClick={() => handleIncrementTurnAway(slot)}
-                            title="Add 1 turn-away entry"
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-900 text-white border border-slate-900 shadow-sm transition cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Time Column */}
                       <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 border-r border-slate-200 whitespace-nowrap text-xs h-16 align-middle">
                         {slot}
                       </td>
@@ -335,6 +325,39 @@ export default function App() {
                           </td>
                         );
                       })}
+
+                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 border-r border-slate-200 whitespace-nowrap text-xs h-16 align-middle">
+                        {slot}
+                      </td>
+
+                      <td className="p-2 bg-slate-50 text-center h-16 align-middle">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleDecrementTurnAway(slot)}
+                            disabled={slotTurnAwayCount === 0}
+                            title="Remove 1 turn-away entry (correction)"
+                            className={`p-1 rounded transition border ${
+                              slotTurnAwayCount > 0 
+                                ? 'bg-white hover:bg-slate-200 text-slate-800 border-slate-400 shadow-sm cursor-pointer' 
+                                : 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                            }`}
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+
+                          <span className={`min-w-[20px] text-xs font-bold ${slotTurnAwayCount > 0 ? 'text-slate-900' : 'text-slate-400'}`}>
+                            {slotTurnAwayCount}
+                          </span>
+
+                          <button
+                            onClick={() => handleIncrementTurnAway(slot)}
+                            title="Add 1 turn-away entry"
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-900 text-white border border-slate-900 shadow-sm transition cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -452,7 +475,8 @@ export default function App() {
                       onChange={(e) => setFormData({ ...formData, time_out: e.target.value })} 
                       className="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">(None - In Session)</option>
+                      {/* Completely blank null option */}
+                      <option value=""></option>
                       {DETAILED_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
