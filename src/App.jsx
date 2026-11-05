@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, BarChart2, Search, X, MapPin, Plus, Minus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
+// Set your Google Apps Script Web App URL here after deployment
 const GOOGLE_SCRIPT_URL = "";
 
 const ROOMS = [
@@ -113,7 +114,7 @@ export default function App() {
 
   const handleSave = () => {
     if (activeRes) {
-      setReservations(reservations.map(r => r.id === activeRes.id ? { ...r, ...formData, people: Number(formData.people), slot: formData.slot || formData.time_in } : r));
+      setReservations(reservations.map(r => r.id === activeRes.id ? { ...r, ...formData, people: Number(formData.people) } : r));
     } else {
       const newRes = { 
         ...formData, 
@@ -157,7 +158,7 @@ export default function App() {
     return hours * 60 + minutes;
   };
 
-  // Determines rowSpan and whether a slot should render a cell or be skipped
+  // Determines rowSpan, offset top, and height based on precise time_in and time_out
   const getOccupancyInfo = (roomId, slot) => {
     const currentSlotMinutes = parseTimeToMinutes(slot);
     if (currentSlotMinutes === null) return null;
@@ -165,21 +166,41 @@ export default function App() {
     const roomReservations = filteredReservations.filter(r => r.room === roomId);
 
     for (let res of roomReservations) {
-      const startMinutes = parseTimeToMinutes(res.slot || res.time_in);
+      const startMinutes = parseTimeToMinutes(res.time_in || res.slot);
       if (startMinutes === null) continue;
 
       const endMinutes = res.time_out ? parseTimeToMinutes(res.time_out) : null;
-      const effectiveEndMinutes = endMinutes !== null ? endMinutes : startMinutes + 120; // Default 2 hours (120 mins) if blank
+      const effectiveEndMinutes = endMinutes !== null ? endMinutes : startMinutes + 120; // Default 2 hours if blank
 
-      // Calculate span length in 30-min rows
-      const totalSpanRows = Math.max(1, Math.round((effectiveEndMinutes - startMinutes) / 30));
+      // Determine the 30-min grid slot row where this reservation starts
+      const startSlotRowMinutes = Math.floor(startMinutes / 30) * 30;
 
-      if (currentSlotMinutes === startMinutes) {
-        return { reservation: res, displayType: 'full_reservation', rowSpan: totalSpanRows };
+      // Determine the 30-min grid slot row where this reservation ends (ceiling to cover row)
+      const endSlotRowMinutes = Math.ceil(effectiveEndMinutes / 30) * 30;
+
+      // Total 30-min rows spanned in the HTML table layout
+      const totalSpanRows = Math.max(1, Math.round((endSlotRowMinutes - startSlotRowMinutes) / 30));
+
+      if (currentSlotMinutes === startSlotRowMinutes) {
+        // Calculate vertical offset percentage from top of the starting slot cell (30 mins = 100%)
+        const topOffsetPct = ((startMinutes - startSlotRowMinutes) / 30) * 100;
+
+        // Total duration of booking in minutes
+        const durationMins = effectiveEndMinutes - startMinutes;
+
+        // Total height calculation relative to a single 30-min row height
+        const heightPct = (durationMins / 30) * 100;
+
+        return { 
+          reservation: res, 
+          displayType: 'full_reservation', 
+          rowSpan: totalSpanRows,
+          topOffsetPct,
+          heightPct
+        };
       }
 
-      // If current row is inside an ongoing booking, mark as overlapped so <td> can be skipped
-      if (currentSlotMinutes > startMinutes && currentSlotMinutes < effectiveEndMinutes) {
+      if (currentSlotMinutes > startSlotRowMinutes && currentSlotMinutes < endSlotRowMinutes) {
         return { displayType: 'overlapped' };
       }
     }
@@ -265,12 +286,12 @@ export default function App() {
                     </th>
                   ))}
 
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[9%] text-center border-b border-slate-700 border-r border-slate-700">
-                    Time
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[12%] text-center border-b border-slate-700 border-r border-slate-700">
+                    Turn-Away
                   </th>
 
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[12%] text-center border-b border-slate-700">
-                    Turn-Away
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[9%] text-center border-b border-slate-700">
+                    Time
                   </th>
                 </tr>
               </thead>
@@ -290,7 +311,6 @@ export default function App() {
                         const isFullBlock = occInfo?.displayType === 'full_reservation';
                         const isOverlapped = occInfo?.displayType === 'overlapped';
 
-                        // Do not render <td> for rows covered by rowSpan
                         if (isOverlapped) return null;
 
                         const cardBgClass = res?.any_room 
@@ -301,24 +321,33 @@ export default function App() {
                           <td 
                             key={room.id} 
                             rowSpan={occInfo?.rowSpan || 1}
-                            className={`p-2 border-r border-slate-200 text-center transition-colors align-middle ${room.colBg}`}
+                            className={`p-1 border-r border-slate-200 text-center transition-colors align-top relative ${room.colBg}`}
+                            style={{ height: occInfo?.rowSpan ? `${occInfo.rowSpan * 4}rem` : '4rem' }}
                           >
                             {isFullBlock ? (
-                              <button 
-                                onClick={() => handleOpenModal(room.id, slot, res)} 
-                                className={`w-full h-full p-2 rounded-lg text-xs font-semibold border text-left transition shadow-sm flex flex-col justify-center ${cardBgClass}`}
+                              <div 
+                                className="absolute left-1 right-1 z-10"
+                                style={{
+                                  top: `${occInfo.topOffsetPct}%`,
+                                  height: `calc(${occInfo.heightPct}% - 4px)`
+                                }}
                               >
-                                <div className="font-bold flex justify-between items-center">
-                                  <span>{res.student_name}</span> 
-                                  <span className="text-[10px] opacity-80">[{res.status}]</span>
-                                </div>
-                                <div className="text-[10px] opacity-80 mt-0.5">
-                                  🕒 {res.time_in} – {res.time_out || 'In Session'}
-                                </div>
-                                <div className="text-[10px] opacity-75 mt-0.5">
-                                  {res.people} Person(s) {res.barcode && `• ${res.barcode}`}
-                                </div>
-                              </button>
+                                <button 
+                                  onClick={() => handleOpenModal(room.id, slot, res)} 
+                                  className={`w-full h-full p-2 rounded-lg text-xs font-semibold border text-left transition shadow-sm flex flex-col justify-center ${cardBgClass}`}
+                                >
+                                  <div className="font-bold flex justify-between items-center">
+                                    <span>{res.student_name}</span> 
+                                    <span className="text-[10px] opacity-80">[{res.status}]</span>
+                                  </div>
+                                  <div className="text-[10px] opacity-80 mt-0.5">
+                                    🕒 {res.time_in} – {res.time_out || 'In Session'}
+                                  </div>
+                                  <div className="text-[10px] opacity-75 mt-0.5">
+                                    {res.people} Person(s) {res.barcode && `• ${res.barcode}`}
+                                  </div>
+                                </button>
+                              </div>
                             ) : (
                               <button onClick={() => handleOpenModal(room.id, slot)} className="w-full h-full py-2 border border-dashed border-slate-300 bg-white/70 hover:bg-white rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-600 text-xs transition flex items-center justify-center">
                                 + Book
@@ -328,11 +357,7 @@ export default function App() {
                         );
                       })}
 
-                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 border-r border-slate-200 whitespace-nowrap text-xs h-16 align-middle">
-                        {slot}
-                      </td>
-
-                      <td className="p-2 bg-slate-50 text-center h-16 align-middle">
+                      <td className="p-2 bg-slate-50 text-center h-16 align-middle border-r border-slate-200">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => handleDecrementTurnAway(slot)}
@@ -359,6 +384,10 @@ export default function App() {
                             <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      </td>
+
+                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 whitespace-nowrap text-xs h-16 align-middle">
+                        {slot}
                       </td>
                     </tr>
                   );
