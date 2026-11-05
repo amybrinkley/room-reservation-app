@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, BarChart2, Search, X, MapPin, Plus, Minus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-// Set your Google Apps Script Web App URL here after deployment
 const GOOGLE_SCRIPT_URL = "";
 
 const ROOMS = [
@@ -15,7 +14,7 @@ const ROOMS = [
 const generate10MinTimes = () => {
   const times = [];
   const startHour = 8;
-  const endHour = 20; // 8:00 PM
+  const endHour = 20;
 
   for (let h = startHour; h <= endHour; h++) {
     for (let m = 0; m < 60; m += 10) {
@@ -114,7 +113,7 @@ export default function App() {
 
   const handleSave = () => {
     if (activeRes) {
-      setReservations(reservations.map(r => r.id === activeRes.id ? { ...r, ...formData, people: Number(formData.people), slot: formData.time_in } : r));
+      setReservations(reservations.map(r => r.id === activeRes.id ? { ...r, ...formData, people: Number(formData.people), slot: formData.slot || formData.time_in } : r));
     } else {
       const newRes = { 
         ...formData, 
@@ -130,8 +129,7 @@ export default function App() {
   };
 
   const handleCheckIn = (res) => {
-    const timeIn = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-    setReservations(reservations.map(r => r.id === res.id ? { ...r, status: 'Checked-In', time_in: timeIn, time_out: '' } : r));
+    setReservations(reservations.map(r => r.id === res.id ? { ...r, status: 'Checked-In', time_out: '' } : r));
     setModalOpen(false);
   };
 
@@ -148,7 +146,6 @@ export default function App() {
 
   const activeTurnAways = turnAways.filter(t => t.week === selectedWeek && t.day === selectedDay);
 
-  // Helper to convert time string (e.g. "8:30 AM") to minutes from midnight
   const parseTimeToMinutes = (timeStr) => {
     if (!timeStr) return null;
     const parts = timeStr.trim().split(' ');
@@ -160,29 +157,30 @@ export default function App() {
     return hours * 60 + minutes;
   };
 
+  // Determines rowSpan and whether a slot should render a cell or be skipped
   const getOccupancyInfo = (roomId, slot) => {
     const currentSlotMinutes = parseTimeToMinutes(slot);
     if (currentSlotMinutes === null) return null;
 
-    // Check all reservations in this room
     const roomReservations = filteredReservations.filter(r => r.room === roomId);
 
     for (let res of roomReservations) {
-      const startMinutes = parseTimeToMinutes(res.time_in || res.slot);
+      const startMinutes = parseTimeToMinutes(res.slot || res.time_in);
       if (startMinutes === null) continue;
 
       const endMinutes = res.time_out ? parseTimeToMinutes(res.time_out) : null;
+      const effectiveEndMinutes = endMinutes !== null ? endMinutes : startMinutes + 120; // Default 2 hours (120 mins) if blank
 
-      // If slot matches start time, render the full reservation card
+      // Calculate span length in 30-min rows
+      const totalSpanRows = Math.max(1, Math.round((effectiveEndMinutes - startMinutes) / 30));
+
       if (currentSlotMinutes === startMinutes) {
-        return { reservation: res, displayType: 'full_reservation' };
+        return { reservation: res, displayType: 'full_reservation', rowSpan: totalSpanRows };
       }
 
-      // If slot falls between start time and end time (or if end time is blank, up to 2 hours default window)
-      const effectiveEndMinutes = endMinutes !== null ? endMinutes : startMinutes + 120;
-
+      // If current row is inside an ongoing booking, mark as overlapped so <td> can be skipped
       if (currentSlotMinutes > startMinutes && currentSlotMinutes < effectiveEndMinutes) {
-        return { reservation: res, displayType: 'unavailable' };
+        return { displayType: 'overlapped' };
       }
     }
 
@@ -290,18 +288,26 @@ export default function App() {
                         const occInfo = getOccupancyInfo(room.id, slot);
                         const res = occInfo?.reservation;
                         const isFullBlock = occInfo?.displayType === 'full_reservation';
-                        const isUnavailable = occInfo?.displayType === 'unavailable';
+                        const isOverlapped = occInfo?.displayType === 'overlapped';
+
+                        // Do not render <td> for rows covered by rowSpan
+                        if (isOverlapped) return null;
 
                         const cardBgClass = res?.any_room 
                           ? 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50' 
                           : room.gradientBg;
 
                         return (
-                          <td key={room.id} className={`p-2 border-r border-slate-200 text-center transition-colors h-16 align-middle ${
-                            isUnavailable ? room.occupiedBg : room.colBg
-                          }`}>
+                          <td 
+                            key={room.id} 
+                            rowSpan={occInfo?.rowSpan || 1}
+                            className={`p-2 border-r border-slate-200 text-center transition-colors align-middle ${room.colBg}`}
+                          >
                             {isFullBlock ? (
-                              <button onClick={() => handleOpenModal(room.id, slot, res)} className={`w-full h-full p-2 rounded-lg text-xs font-semibold border text-left transition shadow-sm flex flex-col justify-center ${cardBgClass}`}>
+                              <button 
+                                onClick={() => handleOpenModal(room.id, slot, res)} 
+                                className={`w-full h-full p-2 rounded-lg text-xs font-semibold border text-left transition shadow-sm flex flex-col justify-center ${cardBgClass}`}
+                              >
                                 <div className="font-bold flex justify-between items-center">
                                   <span>{res.student_name}</span> 
                                   <span className="text-[10px] opacity-80">[{res.status}]</span>
@@ -312,10 +318,6 @@ export default function App() {
                                 <div className="text-[10px] opacity-75 mt-0.5">
                                   {res.people} Person(s) {res.barcode && `• ${res.barcode}`}
                                 </div>
-                              </button>
-                            ) : isUnavailable ? (
-                              <button onClick={() => handleOpenModal(room.id, slot)} className="w-full h-full py-2 border border-dashed border-slate-300/80 bg-white/40 hover:bg-white/80 rounded-lg text-slate-500 hover:text-blue-600 text-xs transition flex items-center justify-center gap-1 font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-500 inline-block"></span> Unavailable
                               </button>
                             ) : (
                               <button onClick={() => handleOpenModal(room.id, slot)} className="w-full h-full py-2 border border-dashed border-slate-300 bg-white/70 hover:bg-white rounded-lg text-slate-400 hover:border-blue-400 hover:text-blue-600 text-xs transition flex items-center justify-center">
@@ -475,7 +477,6 @@ export default function App() {
                       onChange={(e) => setFormData({ ...formData, time_out: e.target.value })} 
                       className="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500"
                     >
-                      {/* Completely blank null option */}
                       <option value=""></option>
                       {DETAILED_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
