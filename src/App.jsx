@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
-import { Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, BarChart2, X, MapPin, Plus, Minus } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import React, { useState, useMemo } from 'react';
+import { 
+  Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, 
+  BarChart2, X, MapPin, Plus, Minus, Filter, RefreshCw, TrendingUp, 
+  CheckCircle, LogOut, Bookmark, PieChart as PieIcon, Activity, Flame
+} from 'lucide-react';
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, 
+  PieChart, Pie, Cell, Legend 
+} from 'recharts';
 
 // Set your Google Apps Script Web App URL here after deployment
 const GOOGLE_SCRIPT_URL = "";
 
 const ROOMS = [
-  { id: '31', name: 'Pink Room (31)', color: 'bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200', headerBg: 'bg-pink-600 text-white', colBg: 'bg-pink-50/40', gradientBg: 'bg-gradient-to-r from-pink-200/90 to-pink-100/70 border-pink-300 text-pink-950' },
-  { id: '33', name: 'Blue Room (33)', color: 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200', headerBg: 'bg-blue-600 text-white', colBg: 'bg-blue-50/40', gradientBg: 'bg-gradient-to-r from-blue-200/90 to-blue-100/70 border-blue-300 text-blue-950' },
-  { id: '34', name: 'Yellow Room (34)', color: 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200', headerBg: 'bg-amber-500 text-white', colBg: 'bg-amber-50/40', gradientBg: 'bg-gradient-to-r from-amber-200/90 to-amber-100/70 border-amber-300 text-amber-950' },
-  { id: '59', name: 'Green Room (59)', color: 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200', headerBg: 'bg-emerald-600 text-white', colBg: 'bg-emerald-50/40', gradientBg: 'bg-gradient-to-r from-emerald-200/90 to-emerald-100/70 border-emerald-300 text-emerald-950' }
+  { id: '31', name: 'Pink Room (31)', color: 'bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200', headerBg: 'bg-pink-600 text-white', colBg: 'bg-pink-50/40', gradientBg: 'bg-gradient-to-r from-pink-200/90 to-pink-100/70 border-pink-300 text-pink-950', themeColor: '#db2777' },
+  { id: '33', name: 'Blue Room (33)', color: 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200', headerBg: 'bg-blue-600 text-white', colBg: 'bg-blue-50/40', gradientBg: 'bg-gradient-to-r from-blue-200/90 to-blue-100/70 border-blue-300 text-blue-950', themeColor: '#2563eb' },
+  { id: '34', name: 'Yellow Room (34)', color: 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200', headerBg: 'bg-amber-500 text-white', colBg: 'bg-amber-50/40', gradientBg: 'bg-gradient-to-r from-amber-200/90 to-amber-100/70 border-amber-300 text-amber-950', themeColor: '#d97706' },
+  { id: '59', name: 'Green Room (59)', color: 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200', headerBg: 'bg-emerald-600 text-white', colBg: 'bg-emerald-50/40', gradientBg: 'bg-gradient-to-r from-emerald-200/90 to-emerald-100/70 border-emerald-300 text-emerald-950', themeColor: '#059669' }
 ];
 
 const generate10MinTimes = () => {
@@ -37,18 +44,18 @@ const TIME_SLOTS = [
   "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM"
 ];
 
-// Helper functions for date initialization
+const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
 const getCurrentDayName = () => {
   const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  return validDays.includes(dayName) ? dayName : "Monday";
+  return DAYS_OF_WEEK.includes(dayName) ? dayName : "Monday";
 };
 
 const getFormattedDateString = (dayName, weekSelection) => {
   const today = new Date();
   const dayMap = { "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5 };
   
-  const currentDayOfWeek = today.getDay(); // 0 is Sun, 1 is Mon, etc.
+  const currentDayOfWeek = today.getDay();
   const daysToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
   
   const targetMonday = new Date(today);
@@ -69,15 +76,27 @@ const INITIAL_RESERVATIONS = [
   { id: 'res_111', week: 'this_week', day: 'Wednesday', room: '33', slot: '4:30 PM', time_in: '4:30 PM', time_out: '6:30 PM', barcode: '', student_name: 'Roman', people: 1, any_room: false, status: 'Reserved', notes: '' },
   { id: 'res_112', week: 'this_week', day: 'Wednesday', room: '34', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '', student_name: 'Lilly', people: 1, any_room: false, status: 'Checked Out', notes: '' },
   { id: 'res_116', week: 'this_week', day: 'Wednesday', room: '59', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '2218883', student_name: 'Zoey', people: 1, any_room: false, status: 'Checked Out', notes: '' },
-  { id: 'res_119', week: 'this_week', day: 'Wednesday', room: '59', slot: '3:30 PM', time_in: '3:30 PM', time_out: '5:30 PM', barcode: '', student_name: 'Sarah', people: 2, any_room: true, status: 'Reserved', notes: '' }
+  { id: 'res_119', week: 'this_week', day: 'Wednesday', room: '59', slot: '3:30 PM', time_in: '3:30 PM', time_out: '5:30 PM', barcode: '', student_name: 'Sarah', people: 2, any_room: true, status: 'Reserved', notes: '' },
+  { id: 'res_201', week: 'this_week', day: 'Monday', room: '31', slot: '10:00 AM', time_in: '10:00 AM', time_out: '12:00 PM', barcode: 'w998123', student_name: 'Alex', people: 4, any_room: false, status: 'Checked Out', notes: 'Math project' },
+  { id: 'res_202', week: 'this_week', day: 'Tuesday', room: '34', slot: '1:00 PM', time_in: '1:00 PM', time_out: '3:00 PM', barcode: 'w882190', student_name: 'Maria', people: 2, any_room: false, status: 'Checked Out', notes: '' },
+  { id: 'res_203', week: 'this_week', day: 'Thursday', room: '59', slot: '11:00 AM', time_in: '11:00 AM', time_out: '1:00 PM', barcode: 'w119023', student_name: 'David', people: 5, any_room: false, status: 'Reserved', notes: 'Group discussion' },
+  { id: 'res_204', week: 'this_week', day: 'Friday', room: '33', slot: '2:00 PM', time_in: '2:00 PM', time_out: '4:00 PM', barcode: 'w334910', student_name: 'Chloe', people: 1, any_room: true, status: 'Reserved', notes: '' }
 ];
 
 const INITIAL_TURNAWAYS = [
   { id: 'ta_1', week: 'this_week', day: 'Wednesday', slot: '10:00 AM' },
   { id: 'ta_2', week: 'this_week', day: 'Wednesday', slot: '10:00 AM' },
   { id: 'ta_3', week: 'this_week', day: 'Wednesday', slot: '1:30 PM' },
-  { id: 'ta_4', week: 'this_week', day: 'Wednesday', slot: '2:30 PM' }
+  { id: 'ta_4', week: 'this_week', day: 'Wednesday', slot: '2:30 PM' },
+  { id: 'ta_5', week: 'this_week', day: 'Monday', slot: '11:00 AM' },
+  { id: 'ta_6', week: 'this_week', day: 'Thursday', slot: '2:00 PM' }
 ];
+
+const STATUS_COLORS = {
+  'Reserved': '#3b82f6',
+  'Checked-In': '#10b981',
+  'Checked Out': '#64748b'
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('schedule');
@@ -88,6 +107,12 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeRes, setActiveRes] = useState(null);
 
+  // Analytics Dashboard Filter State
+  const [analyticsWeek, setAnalyticsWeek] = useState('all');
+  const [analyticsDay, setAnalyticsDay] = useState('all');
+  const [analyticsRoom, setAnalyticsRoom] = useState('all');
+  const [analyticsStatus, setAnalyticsStatus] = useState('all');
+
   const [formData, setFormData] = useState({
     room: '31', time_in: '8:00 AM', time_out: '', barcode: '', student_name: '', people: 1, any_room: false, notes: '', status: 'Reserved'
   });
@@ -95,6 +120,13 @@ export default function App() {
   const handleResetToToday = () => {
     setSelectedWeek('this_week');
     setSelectedDay(getCurrentDayName());
+  };
+
+  const handleResetAnalyticsFilters = () => {
+    setAnalyticsWeek('all');
+    setAnalyticsDay('all');
+    setAnalyticsRoom('all');
+    setAnalyticsStatus('all');
   };
 
   const handleIncrementTurnAway = (slot) => {
@@ -231,15 +263,126 @@ export default function App() {
     return null;
   };
 
-  const usageByRoomData = ROOMS.map(rm => ({
-    name: rm.name,
-    bookings: reservations.filter(r => r.room === rm.id).length
-  }));
+  // ---------------- ANALYTICS COMPUTATIONS ----------------
+  const analyticsReservations = useMemo(() => {
+    return reservations.filter(res => {
+      if (analyticsWeek !== 'all' && res.week !== analyticsWeek) return false;
+      if (analyticsDay !== 'all' && res.day !== analyticsDay) return false;
+      if (analyticsRoom !== 'all' && res.room !== analyticsRoom) return false;
+      if (analyticsStatus !== 'all' && res.status !== analyticsStatus) return false;
+      return true;
+    });
+  }, [reservations, analyticsWeek, analyticsDay, analyticsRoom, analyticsStatus]);
 
-  const turnAwaysBySlotData = TIME_SLOTS.map(s => ({
-    time: s,
-    turnAways: activeTurnAways.filter(t => t.slot === s).length
-  }));
+  const analyticsTurnAways = useMemo(() => {
+    return turnAways.filter(ta => {
+      if (analyticsWeek !== 'all' && ta.week !== analyticsWeek) return false;
+      if (analyticsDay !== 'all' && ta.day !== analyticsDay) return false;
+      return true;
+    });
+  }, [turnAways, analyticsWeek, analyticsDay]);
+
+  const totalFilteredBookings = analyticsReservations.length;
+  const totalFilteredPeople = analyticsReservations.reduce((acc, curr) => acc + (Number(curr.people) || 0), 0);
+  const totalFilteredTurnAways = analyticsTurnAways.length;
+  const avgGroupSize = totalFilteredBookings > 0 ? (totalFilteredPeople / totalFilteredBookings).toFixed(1) : 0;
+
+  // Chart Data 1: Bookings by Room
+  const usageByRoomData = useMemo(() => {
+    return ROOMS.map(rm => {
+      const count = analyticsReservations.filter(r => r.room === rm.id).length;
+      return {
+        name: rm.name,
+        bookings: count,
+        fill: rm.themeColor
+      };
+    });
+  }, [analyticsReservations]);
+
+  // Chart Data 2: Turn-aways by Time Slot
+  const turnAwaysBySlotData = useMemo(() => {
+    return TIME_SLOTS.map(s => ({
+      time: s,
+      turnAways: analyticsTurnAways.filter(t => t.slot === s).length
+    }));
+  }, [analyticsTurnAways]);
+
+  // Chart Data 3: Bookings by Day of Week
+  const bookingsByDayData = useMemo(() => {
+    return DAYS_OF_WEEK.map(day => ({
+      day: day.substring(0, 3),
+      fullDay: day,
+      bookings: analyticsReservations.filter(r => r.day === day).length,
+      turnAways: analyticsTurnAways.filter(t => t.day === day).length
+    }));
+  }, [analyticsReservations, analyticsTurnAways]);
+
+  // Chart Data 4: Status Breakdown
+  const statusBreakdownData = useMemo(() => {
+    const statuses = ['Reserved', 'Checked-In', 'Checked Out'];
+    return statuses.map(st => ({
+      name: st,
+      value: analyticsReservations.filter(r => r.room !== 'all' ? analyticsReservations.filter(r => r.status === st).length : 0),
+      color: STATUS_COLORS[st]
+    })).filter(item => item.value > 0);
+  }, [analyticsReservations]);
+
+  // Heat Map Data 1: Booking Density (Days vs Time Slots)
+  const occupancyHeatMap = useMemo(() => {
+    let maxCount = 1;
+    const grid = TIME_SLOTS.map(slot => {
+      const row = { slot };
+      const slotMins = parseTimeToMinutes(slot);
+
+      DAYS_OF_WEEK.forEach(day => {
+        const count = analyticsReservations.filter(res => {
+          if (res.day !== day) return false;
+          const start = parseTimeToMinutes(res.time_in || res.slot);
+          const end = res.time_out ? parseTimeToMinutes(res.time_out) : start + 120;
+          return slotMins >= start && slotMins < end;
+        }).length;
+
+        row[day] = count;
+        if (count > maxCount) maxCount = count;
+      });
+      return row;
+    });
+
+    return { grid, maxCount };
+  }, [analyticsReservations]);
+
+  // Heat Map Data 2: Turn-Away Intensity
+  const turnAwayHeatMap = useMemo(() => {
+    let maxCount = 1;
+    const grid = TIME_SLOTS.map(slot => {
+      const row = { slot };
+      DAYS_OF_WEEK.forEach(day => {
+        const count = analyticsTurnAways.filter(ta => ta.day === day && ta.slot === slot).length;
+        row[day] = count;
+        if (count > maxCount) maxCount = count;
+      });
+      return row;
+    });
+
+    return { grid, maxCount };
+  }, [analyticsTurnAways]);
+
+  const getHeatMapColor = (count, maxCount, type = 'booking') => {
+    if (count === 0) return 'bg-slate-100/70 text-slate-400';
+    const ratio = count / maxCount;
+
+    if (type === 'booking') {
+      if (ratio <= 0.25) return 'bg-blue-100 text-blue-800 font-medium';
+      if (ratio <= 0.5) return 'bg-blue-300 text-blue-900 font-semibold';
+      if (ratio <= 0.75) return 'bg-blue-500 text-white font-bold';
+      return 'bg-blue-700 text-white font-black shadow-inner';
+    } else {
+      if (ratio <= 0.25) return 'bg-rose-100 text-rose-800 font-medium';
+      if (ratio <= 0.5) return 'bg-rose-300 text-rose-900 font-semibold';
+      if (ratio <= 0.75) return 'bg-rose-500 text-white font-bold';
+      return 'bg-rose-700 text-white font-black shadow-inner';
+    }
+  };
 
   const getDisplayNameAndId = (res) => {
     const hasName = Boolean(res.student_name && res.student_name.trim());
@@ -258,7 +401,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-800">
+    <div className="min-h-screen bg-white/30 font-sans text-slate-800">
       <header className="bg-slate-900 text-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-6">
@@ -302,33 +445,33 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleResetToToday}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm transition shadow-sm"
-              title="Return schedule to today"
-            >
-              Today
-            </button>
-          </div>
+        {activeTab === 'schedule' && (
+          <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleResetToToday}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm transition shadow-sm"
+                title="Return schedule to today"
+              >
+                Today
+              </button>
+            </div>
 
-          <div className="text-base font-bold text-slate-700 hidden sm:block">
-            {getFormattedDateString(selectedDay, selectedWeek)}
-          </div>
+            <div className="text-base font-bold text-slate-700 hidden sm:block">
+              {getFormattedDateString(selectedDay, selectedWeek)}
+            </div>
 
-          {activeTab === 'schedule' && (
             <div className="flex items-center gap-3">
               <div className="bg-slate-200 p-1 rounded-lg flex text-xs font-semibold">
                 <button onClick={() => setSelectedWeek('this_week')} className={`px-3 py-1.5 rounded-md ${selectedWeek === 'this_week' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>This Week</button>
                 <button onClick={() => setSelectedWeek('next_week')} className={`px-3 py-1.5 rounded-md ${selectedWeek === 'next_week' ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}>Next Week</button>
               </div>
               <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)} className="bg-white border border-slate-300 text-sm font-semibold px-3 py-1.5 rounded-lg text-slate-700">
-                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => <option key={d} value={d}>{d}</option>)}
+                {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {activeTab === 'schedule' ? (
           <div className="bg-white rounded-xl shadow border border-slate-200 overflow-x-auto">
@@ -359,7 +502,7 @@ export default function App() {
 
                   return (
                     <tr key={slot} className={`h-16 ${rowBgGradientClass} hover:bg-slate-100/70 transition-colors`}>
-                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50/90 border-r border-slate-200 whitespace-nowrap text-xs h-16 align-middle">
+                      <td className="p-3 font-semibold text-slate-700 text-center bg-white/90 border-r border-slate-200 whitespace-nowrap text-xs h-16 align-middle">
                         {slot}
                       </td>
 
@@ -372,7 +515,7 @@ export default function App() {
                         if (isOverlapped) return null;
 
                         const cardBgClass = res?.any_room 
-                          ? 'bg-white text-slate-800 border-slate-300 hover:bg-slate-50' 
+                          ? 'bg-white text-slate-800 border-slate-300 hover:bg-white' 
                           : room.gradientBg;
 
                         return (
@@ -414,7 +557,7 @@ export default function App() {
                         );
                       })}
 
-                      <td className="p-2 bg-slate-50/90 text-center h-16 align-middle border-l border-slate-200">
+                      <td className="p-2 bg-white/90 text-center h-16 align-middle border-l border-slate-200">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => handleDecrementTurnAway(slot)}
@@ -450,32 +593,260 @@ export default function App() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Filter Toolbar */}
+            <div className="bg-white p-5 rounded-xl shadow border border-slate-200">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-blue-600" />
+                  <h2 className="text-base font-bold text-slate-800">Analytics Dashboard Filters</h2>
+                </div>
+                <button 
+                  onClick={handleResetAnalyticsFilters}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 transition self-start md:self-auto"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Reset Filters
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Timeframe (Week)</label>
+                  <select 
+                    value={analyticsWeek} 
+                    onChange={(e) => setAnalyticsWeek(e.target.value)} 
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Weeks</option>
+                    <option value="this_week">This Week</option>
+                    <option value="next_week">Next Week</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Day of Week</label>
+                  <select 
+                    value={analyticsDay} 
+                    onChange={(e) => setAnalyticsDay(e.target.value)} 
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Days</option>
+                    {DAYS_OF_WEEK.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Room Filter</label>
+                  <select 
+                    value={analyticsRoom} 
+                    onChange={(e) => setAnalyticsRoom(e.target.value)} 
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Rooms</option>
+                    {ROOMS.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Reservation Status</label>
+                  <select 
+                    value={analyticsStatus} 
+                    onChange={(e) => setAnalyticsStatus(e.target.value)} 
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="Reserved">Reserved</option>
+                    <option value="Checked-In">Checked-In</option>
+                    <option value="Checked Out">Checked Out</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* KPI Cards Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-5 rounded-xl shadow border border-slate-200 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Bookings</p>
+                  <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalFilteredBookings}</h3>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <Bookmark className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl shadow border border-slate-200 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Occupants</p>
+                  <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalFilteredPeople}</h3>
+                </div>
+                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                  <Users className="w-6 h-6 text-emerald-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl shadow border border-slate-200 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Turn-Away Events</p>
+                  <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalFilteredTurnAways}</h3>
+                </div>
+                <div className="p-3 bg-rose-50 rounded-lg border border-rose-100">
+                  <AlertCircle className="w-6 h-6 text-rose-600" />
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-xl shadow border border-slate-200 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Avg Group Size</p>
+                  <h3 className="text-2xl font-bold text-slate-900 mt-1">{avgGroupSize}</h3>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                  <Activity className="w-6 h-6 text-amber-600" />
+                </div>
+              </div>
+            </div>
+
+            {/* Heat Maps Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Heat Map 1: Booking Density */}
               <div className="bg-white p-6 rounded-xl shadow border border-slate-200">
-                <h3 className="text-lg font-bold mb-4">Total Bookings by Room</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-blue-600" /> Booking Density Heat Map
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+                    <span>Low</span>
+                    <span className="w-3 h-3 rounded bg-blue-100"></span>
+                    <span className="w-3 h-3 rounded bg-blue-300"></span>
+                    <span className="w-3 h-3 rounded bg-blue-500"></span>
+                    <span className="w-3 h-3 rounded bg-blue-700"></span>
+                    <span>High</span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-center text-xs border-collapse min-w-[400px]">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-600">
+                        <th className="p-2 text-left font-semibold">Time</th>
+                        {DAYS_OF_WEEK.map(day => (
+                          <th key={day} className="p-2 font-semibold">{day.substring(0, 3)}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {occupancyHeatMap.grid.map(row => (
+                        <tr key={row.slot} className="hover:bg-white">
+                          <td className="p-2 text-left font-medium text-slate-500 whitespace-nowrap">{row.slot}</td>
+                          {DAYS_OF_WEEK.map(day => {
+                            const count = row[day];
+                            const bgClass = getHeatMapColor(count, occupancyHeatMap.maxCount, 'booking');
+                            return (
+                              <td key={day} className="p-1">
+                                <div className={`py-1.5 rounded transition ${bgClass}`} title={`${day} ${row.slot}: ${count} active booking(s)`}>
+                                  {count}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Heat Map 2: Turn-Away Hotspots */}
+              <div className="bg-white p-6 rounded-xl shadow border border-slate-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-rose-600" /> Turn-Away Hotspots Heat Map
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+                    <span>Low</span>
+                    <span className="w-3 h-3 rounded bg-rose-100"></span>
+                    <span className="w-3 h-3 rounded bg-rose-300"></span>
+                    <span className="w-3 h-3 rounded bg-rose-500"></span>
+                    <span className="w-3 h-3 rounded bg-rose-700"></span>
+                    <span>High</span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-center text-xs border-collapse min-w-[400px]">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-600">
+                        <th className="p-2 text-left font-semibold">Time</th>
+                        {DAYS_OF_WEEK.map(day => (
+                          <th key={day} className="p-2 font-semibold">{day.substring(0, 3)}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {turnAwayHeatMap.grid.map(row => (
+                        <tr key={row.slot} className="hover:bg-white">
+                          <td className="p-2 text-left font-medium text-slate-500 whitespace-nowrap">{row.slot}</td>
+                          {DAYS_OF_WEEK.map(day => {
+                            const count = row[day];
+                            const bgClass = getHeatMapColor(count, turnAwayHeatMap.maxCount, 'turnaway');
+                            return (
+                              <td key={day} className="p-1">
+                                <div className={`py-1.5 rounded transition ${bgClass}`} title={`${day} ${row.slot}: ${count} turn-away(s)`}>
+                                  {count}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Analytics Charts Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Chart 1: Bookings by Room */}
+              <div className="bg-white p-6 rounded-xl shadow border border-slate-200">
+                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4 text-blue-600" /> Bookings by Room
+                </h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={usageByRoomData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis allowDecimals={false} />
                       <Tooltip />
-                      <Bar dataKey="bookings" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="bookings" radius={[4, 4, 0, 0]}>
+                        {usageByRoomData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
+              {/* Chart 2: Bookings & Turn-Aways by Day */}
               <div className="bg-white p-6 rounded-xl shadow border border-slate-200">
-                <h3 className="text-lg font-bold mb-4">Turn-Aways by Time Slot ({selectedDay})</h3>
+                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-indigo-600" /> Daily Demand vs Turn-Aways
+                </h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={turnAwaysBySlotData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" interval={3} />
+                    <BarChart data={bookingsByDayData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="day" />
                       <YAxis allowDecimals={false} />
                       <Tooltip />
-                      <Bar dataKey="turnAways" fill="#475569" radius={[4, 4, 0, 0]} />
+                      <Legend />
+                      <Bar name="Bookings" dataKey="bookings" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar name="Turn-Aways" dataKey="turnAways" fill="#f43f5e" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -527,7 +898,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2 bg-white p-2.5 rounded-lg border border-slate-200">
                   <input 
                     type="checkbox" 
                     id="any_room" 
@@ -540,7 +911,7 @@ export default function App() {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-slate-200">
                   <div>
                     <label className="block font-semibold mb-1 text-slate-700">Check In Time</label>
                     <select 
