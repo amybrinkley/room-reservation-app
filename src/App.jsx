@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, BarChart2, Search, X, MapPin } from 'lucide-react';
+import { Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, BarChart2, Search, X, MapPin, Plus, Minus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 // Set your Google Apps Script Web App URL here after deployment
@@ -40,9 +40,9 @@ const TIME_SLOTS = [
 const INITIAL_RESERVATIONS = [
   { id: 'res_101', week: 'this_week', day: 'Wednesday', room: '31', slot: '8:30 AM', time_in: '8:30 AM', time_out: '10:30 AM', barcode: 'w2195408', student_name: 'Student 1', people: 3, status: 'Completed', notes: 'Group study' },
   { id: 'res_102', week: 'this_week', day: 'Wednesday', room: '31', slot: '9:30 AM', time_in: '9:30 AM', time_out: '11:30 AM', barcode: '2208365', student_name: 'Rebecca', people: 2, status: 'Completed', notes: '' },
-  { id: 'res_105', week: 'this_week', day: 'Wednesday', room: '31', slot: '1:30 PM', time_in: '1:30 PM', time_out: '3:30 PM', barcode: 'w2156737', student_name: 'Student 2', people: 1, status: 'Checked-In', notes: '' },
+  { id: 'res_105', week: 'this_week', day: 'Wednesday', room: '31', slot: '1:30 PM', time_in: '1:30 PM', time_out: '', barcode: 'w2156737', student_name: 'Student 2', people: 1, status: 'Checked-In', notes: '' },
   { id: 'res_107', week: 'this_week', day: 'Wednesday', room: '33', slot: '9:00 AM', time_in: '9:00 AM', time_out: '11:00 AM', barcode: 'w2216701', student_name: 'Sarah', people: 1, status: 'Completed', notes: 'WebCam needed' },
-  { id: 'res_110', week: 'this_week', day: 'Wednesday', room: '33', slot: '2:30 PM', time_in: '2:30 PM', time_out: '4:30 PM', barcode: 'w1889324', student_name: 'Ryan', people: 1, status: 'Checked-In', notes: '' },
+  { id: 'res_110', week: 'this_week', day: 'Wednesday', room: '33', slot: '2:30 PM', time_in: '2:30 PM', time_out: '', barcode: 'w1889324', student_name: 'Ryan', people: 1, status: 'Checked-In', notes: '' },
   { id: 'res_111', week: 'this_week', day: 'Wednesday', room: '33', slot: '4:30 PM', time_in: '4:30 PM', time_out: '6:30 PM', barcode: '', student_name: 'Roman', people: 1, status: 'Scheduled', notes: '' },
   { id: 'res_112', week: 'this_week', day: 'Wednesday', room: '34', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '', student_name: 'Lilly', people: 1, status: 'Completed', notes: '' },
   { id: 'res_116', week: 'this_week', day: 'Wednesday', room: '59', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '2218883', student_name: 'Zoey', people: 1, status: 'Completed', notes: '' },
@@ -70,7 +70,7 @@ export default function App() {
     room: '31', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '', student_name: '', people: 1, notes: '', status: 'Scheduled'
   });
 
-  const handleLogTimeTurnAway = (slot) => {
+  const handleIncrementTurnAway = (slot) => {
     const newEntry = {
       id: 'ta_' + Date.now(),
       week: selectedWeek,
@@ -79,6 +79,14 @@ export default function App() {
       timestamp: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })
     };
     setTurnAways(prev => [...prev, newEntry]);
+  };
+
+  const handleDecrementTurnAway = (slot) => {
+    setTurnAways(prev => {
+      const indexToRemove = prev.findLastIndex(t => t.week === selectedWeek && t.day === selectedDay && t.slot === slot);
+      if (indexToRemove === -1) return prev;
+      return prev.filter((_, idx) => idx !== indexToRemove);
+    });
   };
 
   const handleOpenModal = (room = '31', initialSlot = '8:00 AM', existing = null) => {
@@ -106,10 +114,11 @@ export default function App() {
 
   const handleSave = () => {
     if (activeRes) {
-      setReservations(reservations.map(r => r.id === activeRes.id ? { ...r, ...formData, slot: formData.time_in } : r));
+      setReservations(reservations.map(r => r.id === activeRes.id ? { ...r, ...formData, people: Number(formData.people), slot: formData.time_in } : r));
     } else {
       const newRes = { 
         ...formData, 
+        people: Number(formData.people),
         id: 'res_' + Date.now(), 
         week: selectedWeek, 
         day: selectedDay, 
@@ -122,7 +131,7 @@ export default function App() {
 
   const handleCheckIn = (res) => {
     const timeIn = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-    setReservations(reservations.map(r => r.id === res.id ? { ...r, status: 'Checked-In', time_in: timeIn } : r));
+    setReservations(reservations.map(r => r.id === res.id ? { ...r, status: 'Checked-In', time_in: timeIn, time_out: '' } : r));
     setModalOpen(false);
   };
 
@@ -139,6 +148,7 @@ export default function App() {
 
   const activeTurnAways = turnAways.filter(t => t.week === selectedWeek && t.day === selectedDay);
 
+  // Helper to check occupancy and render filled reservation blocks
   const getOccupancyInfo = (roomId, slot) => {
     const slotIndex = TIME_SLOTS.indexOf(slot);
     if (slotIndex === -1) return null;
@@ -148,8 +158,18 @@ export default function App() {
       if (checkIdx >= 0) {
         const checkSlot = TIME_SLOTS[checkIdx];
         const res = filteredReservations.find(r => r.room === roomId && (r.slot === checkSlot || r.time_in === checkSlot));
+        
         if (res) {
-          return { reservation: res, isStart: offset === 0, offset };
+          // If no check-out time is specified, fill all 4 slots (entire 2-hour window) with the reservation block
+          if (!res.time_out || res.time_out.trim() === '') {
+            return { reservation: res, displayType: 'full_reservation', offset };
+          }
+          // If a check-out time exists, display start block for offset 0 and fallback for subsequent offsets
+          if (offset === 0) {
+            return { reservation: res, displayType: 'full_reservation', offset: 0 };
+          } else {
+            return { reservation: res, displayType: 'unavailable', offset };
+          }
         }
       }
     }
@@ -221,14 +241,17 @@ export default function App() {
 
         {activeTab === 'schedule' ? (
           <div className="bg-white rounded-xl shadow border border-slate-200 overflow-x-auto">
-            <table className="w-full text-left border-collapse table-fixed min-w-[850px]">
+            <table className="w-full text-left border-collapse table-fixed min-w-[900px]">
               <thead>
                 <tr>
-                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[16%] text-center border-b border-slate-700">
-                    Time / Turn-Away
+                  <th className="p-3 bg-slate-800 text-white text-xs uppercase tracking-wider w-[10%] text-center border-b border-slate-700">
+                    Time
+                  </th>
+                  <th className="p-3 bg-amber-900/90 text-amber-100 text-xs uppercase tracking-wider w-[14%] text-center border-b border-slate-700 border-r border-slate-700">
+                    Turn-Away
                   </th>
                   {ROOMS.map(room => (
-                    <th key={room.id} className={`p-3 text-xs uppercase tracking-wider text-center font-bold border-b border-slate-200 w-[21%] ${room.headerBg}`}>
+                    <th key={room.id} className={`p-3 text-xs uppercase tracking-wider text-center font-bold border-b border-slate-200 w-[19%] ${room.headerBg}`}>
                       {room.name}
                     </th>
                   ))}
@@ -240,35 +263,50 @@ export default function App() {
 
                   return (
                     <tr key={slot} className="hover:bg-slate-100/80">
-                      {/* Time Column with Integrated Turn-Away Quick Button & Counter */}
-                      <td className="p-2 font-semibold bg-slate-50 border-r border-slate-200 text-center">
-                        <div className="text-xs text-slate-700 font-bold mb-1">{slot}</div>
+                      <td className="p-3 font-semibold text-slate-700 text-center bg-slate-50 border-r border-slate-200 whitespace-nowrap text-xs">
+                        {slot}
+                      </td>
+
+                      <td className="p-2 bg-amber-50/50 border-r border-slate-200 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
-                            onClick={() => handleLogTimeTurnAway(slot)}
-                            title={`Log unfulfilled request at ${slot}`}
-                            className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 hover:border-amber-400 text-[10px] font-bold px-1.5 py-0.5 rounded transition flex items-center gap-0.5 shadow-sm"
+                            onClick={() => handleDecrementTurnAway(slot)}
+                            disabled={slotTurnAwayCount === 0}
+                            title="Remove 1 turn-away entry (correction)"
+                            className={`p-1 rounded transition border ${
+                              slotTurnAwayCount > 0 
+                                ? 'bg-white hover:bg-amber-100 text-amber-800 border-amber-300 shadow-sm cursor-pointer' 
+                                : 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                            }`}
                           >
-                            <AlertCircle className="w-3 h-3 text-amber-600" /> + Turn-Away
+                            <Minus className="w-3.5 h-3.5" />
                           </button>
-                          {slotTurnAwayCount > 0 && (
-                            <span className="bg-amber-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow" title={`${slotTurnAwayCount} turn-away(s) logged at ${slot}`}>
-                              {slotTurnAwayCount}
-                            </span>
-                          )}
+
+                          <span className={`min-w-[20px] text-xs font-bold ${slotTurnAwayCount > 0 ? 'text-amber-900' : 'text-slate-400'}`}>
+                            {slotTurnAwayCount}
+                          </span>
+
+                          <button
+                            onClick={() => handleIncrementTurnAway(slot)}
+                            title="Add 1 turn-away entry"
+                            className="p-1 rounded bg-amber-600 hover:bg-amber-700 text-white border border-amber-700 shadow-sm transition cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
 
                       {ROOMS.map(room => {
                         const occInfo = getOccupancyInfo(room.id, slot);
-                        const res = occInfo?.isStart ? occInfo.reservation : null;
-                        const isOccupiedBlock = occInfo && !occInfo.isStart;
+                        const res = occInfo?.reservation;
+                        const isFullBlock = occInfo?.displayType === 'full_reservation';
+                        const isUnavailable = occInfo?.displayType === 'unavailable';
 
                         return (
                           <td key={room.id} className={`p-2 border-r border-slate-200 text-center transition-colors ${
-                            isOccupiedBlock ? room.occupiedBg : room.colBg
+                            isUnavailable ? room.occupiedBg : room.colBg
                           }`}>
-                            {res ? (
+                            {isFullBlock ? (
                               <button onClick={() => handleOpenModal(room.id, slot, res)} className={`w-full p-2 rounded-lg text-xs font-semibold border text-left transition shadow-sm ${
                                 res.status === 'Checked-In' ? 'bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200' :
                                 res.status === 'Scheduled' ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' :
@@ -276,11 +314,11 @@ export default function App() {
                               }`}>
                                 <div className="font-bold flex justify-between">{res.student_name} <span>[{res.status}]</span></div>
                                 <div className="text-[10px] text-slate-600 mt-0.5">
-                                  🕒 {res.time_in} – {res.time_out}
+                                  🕒 {res.time_in} – {res.time_out || 'In Session (2 hr window)'}
                                 </div>
                                 <div className="text-[10px] text-slate-500 mt-0.5">{res.people} Person(s) {res.barcode && `• ${res.barcode}`}</div>
                               </button>
-                            ) : isOccupiedBlock ? (
+                            ) : isUnavailable ? (
                               <button onClick={() => handleOpenModal(room.id, slot)} className="w-full py-2 border border-dashed border-slate-300/80 bg-white/40 hover:bg-white/80 rounded-lg text-slate-500 hover:text-blue-600 text-xs transition flex items-center justify-center gap-1 font-medium">
                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span> Unavailable
                               </button>
@@ -353,11 +391,28 @@ export default function App() {
                   <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="w-full p-2 border rounded-lg" placeholder="w1234567" />
                 </div>
 
-                <div>
-                  <label className="block font-semibold mb-1">Room</label>
-                  <select value={formData.room} onChange={(e) => setFormData({ ...formData, room: e.target.value })} className="w-full p-2 border rounded-lg">
-                    {ROOMS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold mb-1">Room</label>
+                    <select value={formData.room} onChange={(e) => setFormData({ ...formData, room: e.target.value })} className="w-full p-2 border rounded-lg">
+                      {ROOMS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold mb-1">Number of People</label>
+                    <select 
+                      value={formData.people} 
+                      onChange={(e) => setFormData({ ...formData, people: Number(e.target.value) })} 
+                      className="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                        <option key={num} value={num}>
+                          {num} {num === 1 ? 'Person' : 'People'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
@@ -379,6 +434,7 @@ export default function App() {
                       onChange={(e) => setFormData({ ...formData, time_out: e.target.value })} 
                       className="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500"
                     >
+                      <option value="">(In Session - No Check-Out)</option>
                       {DETAILED_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
