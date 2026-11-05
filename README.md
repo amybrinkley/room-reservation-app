@@ -22,37 +22,30 @@ room-reservation-app/
 │   ├── App.jsx               # Main React Application
 │   ├── main.jsx              # Application Entry Point
 │   └── index.css             # Tailwind CSS Directives
+├── .github/
+│   └── workflows/
+│       └── deploy.yml        # GitHub Actions workflow for GitHub Pages
 ├── .gitignore
-├── package.json
-├── index.html
-├── vite.config.js
+├── package.json              # Updated with GitHub Pages homepage script
+├── index.html                # Corrected <!DOCTYPE html> doctype
+├── vite.config.js            # Configured base path for GitHub Pages
 └── README.md
 ```
 
-## Quick Start
+## Quick Start & Deployment
 
-### 1. Front-End Setup (React + Vite)
+### GitHub Pages Deployment (Free Hosting)
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/room-reservation-app.git
-cd room-reservation-app
+1. Push this repository to GitHub (`amybrinkley/room-reservation-app`).
+2. Go to **Settings > Pages** on your GitHub repository.
+3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+4. GitHub Actions will automatically build and publish your app at:
+   `https://amybrinkley.github.io/room-reservation-app/`
 
-# Install dependencies
-npm install
+### Vercel Deployment
 
-# Start development server
-npm run dev
-```
-
-### 2. Back-End Setup (Google Sheets + Apps Script)
-
-1. Upload `Room_Reservation_Backend_Database.xlsx` to your Google Drive and convert it to **Google Sheets** (`File > Save as Google Sheets`).
-2. Go to **Extensions > Apps Script** in your Google Sheet.
-3. Paste the contents of `backend/Code.gs` into the script editor.
-4. Click **Deploy > New deployment**.
-5. Select **Web app**, set access to **Anyone** (or domain-restricted), and click **Deploy**.
-6. Copy the Web App URL and update `GOOGLE_SCRIPT_URL` in `src/App.jsx`.
+1. Import your GitHub repository (`amybrinkley/room-reservation-app`) on [Vercel](https://vercel.com).
+2. Click **Deploy**. Vercel will automatically detect Vite and publish the site.
 
 ## License
 

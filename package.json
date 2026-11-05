@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "homepage": "https://amybrinkley.github.io/room-reservation-app",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
