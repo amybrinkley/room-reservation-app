@@ -37,6 +37,29 @@ const TIME_SLOTS = [
   "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM", "7:30 PM"
 ];
 
+// Helper functions for date initialization
+const getCurrentDayName = () => {
+  const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  return validDays.includes(dayName) ? dayName : "Monday";
+};
+
+const getFormattedDateString = (dayName, weekSelection) => {
+  const today = new Date();
+  const dayMap = { "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5 };
+  
+  const currentDayOfWeek = today.getDay(); // 0 is Sun, 1 is Mon, etc.
+  const daysToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
+  
+  const targetMonday = new Date(today);
+  targetMonday.setDate(today.getDate() + daysToMonday + (weekSelection === 'next_week' ? 7 : 0));
+  
+  const targetDate = new Date(targetMonday);
+  targetDate.setDate(targetMonday.getDate() + (dayMap[dayName] - 1));
+  
+  return targetDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+};
+
 const INITIAL_RESERVATIONS = [
   { id: 'res_101', week: 'this_week', day: 'Wednesday', room: '31', slot: '8:30 AM', time_in: '8:30 AM', time_out: '10:30 AM', barcode: 'w2195408', student_name: 'Student 1', people: 3, any_room: false, status: 'Checked Out', notes: 'Group study' },
   { id: 'res_102', week: 'this_week', day: 'Wednesday', room: '31', slot: '9:30 AM', time_in: '9:30 AM', time_out: '11:30 AM', barcode: '2208365', student_name: 'Rebecca', people: 2, any_room: true, status: 'Checked Out', notes: '' },
@@ -59,7 +82,7 @@ const INITIAL_TURNAWAYS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('schedule');
   const [selectedWeek, setSelectedWeek] = useState('this_week');
-  const [selectedDay, setSelectedDay] = useState('Wednesday');
+  const [selectedDay, setSelectedDay] = useState(getCurrentDayName);
   const [reservations, setReservations] = useState(INITIAL_RESERVATIONS);
   const [turnAways, setTurnAways] = useState(INITIAL_TURNAWAYS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -140,6 +163,11 @@ export default function App() {
     setModalOpen(false);
   };
 
+  const handleCancelReservation = (res) => {
+    setReservations(reservations.filter(r => r.id !== res.id));
+    setModalOpen(false);
+  };
+
   const filteredReservations = reservations.filter(r => 
     r.week === selectedWeek && r.day === selectedDay &&
     (searchQuery === '' || r.student_name.toLowerCase().includes(searchQuery.toLowerCase()) || r.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -158,7 +186,6 @@ export default function App() {
     return hours * 60 + minutes;
   };
 
-  // Determines rowSpan, offset top, and height based on precise time_in and time_out
   const getOccupancyInfo = (roomId, slot) => {
     const currentSlotMinutes = parseTimeToMinutes(slot);
     if (currentSlotMinutes === null) return null;
@@ -170,33 +197,23 @@ export default function App() {
       if (startMinutes === null) continue;
 
       const endMinutes = res.time_out ? parseTimeToMinutes(res.time_out) : null;
-      const effectiveEndMinutes = endMinutes !== null ? endMinutes : startMinutes + 120; // Default 2 hours if blank
+      const effectiveEndMinutes = endMinutes !== null ? endMinutes : startMinutes + 120;
 
-      // Determine the 30-min grid slot row where this reservation starts
       const startSlotRowMinutes = Math.floor(startMinutes / 30) * 30;
-
-      // Determine the 30-min grid slot row where this reservation ends (ceiling to cover row)
       const endSlotRowMinutes = Math.ceil(effectiveEndMinutes / 30) * 30;
 
-      // Total 30-min rows spanned in the HTML table layout
       const totalSpanRows = Math.max(1, Math.round((endSlotRowMinutes - startSlotRowMinutes) / 30));
 
       if (currentSlotMinutes === startSlotRowMinutes) {
-        // Calculate vertical offset percentage from top of the starting slot cell (30 mins = 100%)
         const topOffsetPct = ((startMinutes - startSlotRowMinutes) / 30) * 100;
-
-        // Total duration of booking in minutes
-        const durationMins = effectiveEndMinutes - startMinutes;
-
-        // Total height calculation relative to a single 30-min row height
-        const heightPct = (durationMins / 30) * 100;
+        const bottomOffsetPct = ((endSlotRowMinutes - effectiveEndMinutes) / 30) * 100;
 
         return { 
           reservation: res, 
           displayType: 'full_reservation', 
           rowSpan: totalSpanRows,
           topOffsetPct,
-          heightPct
+          bottomOffsetPct
         };
       }
 
@@ -217,6 +234,22 @@ export default function App() {
     time: s,
     turnAways: activeTurnAways.filter(t => t.slot === s).length
   }));
+
+  const getDisplayNameAndId = (res) => {
+    const hasName = Boolean(res.student_name && res.student_name.trim());
+    const hasId = Boolean(res.barcode && res.barcode.trim());
+
+    if (hasName && hasId) {
+      return `${res.student_name} (${res.barcode})`;
+    }
+    if (hasName) {
+      return res.student_name;
+    }
+    if (hasId) {
+      return res.barcode;
+    }
+    return 'Reserved';
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800">
@@ -249,13 +282,17 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button onClick={() => setActiveTab('schedule')} className={`px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-2 ${activeTab === 'schedule' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-300'}`}>
               <Calendar className="w-4 h-4" /> Schedule Matrix
             </button>
             <button onClick={() => setActiveTab('analytics')} className={`px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-2 ${activeTab === 'analytics' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-300'}`}>
               <BarChart2 className="w-4 h-4" /> Usage Analytics
             </button>
+          </div>
+
+          <div className="text-base font-bold text-slate-700 hidden sm:block">
+            {getFormattedDateString(selectedDay, selectedWeek)}
           </div>
 
           {activeTab === 'schedule' && (
@@ -322,14 +359,13 @@ export default function App() {
                             key={room.id} 
                             rowSpan={occInfo?.rowSpan || 1}
                             className={`p-1 border-r border-slate-200 text-center transition-colors align-top relative ${room.colBg}`}
-                            style={{ height: occInfo?.rowSpan ? `${occInfo.rowSpan * 4}rem` : '4rem' }}
                           >
                             {isFullBlock ? (
                               <div 
                                 className="absolute left-1 right-1 z-10"
                                 style={{
-                                  top: `${occInfo.topOffsetPct}%`,
-                                  height: `calc(${occInfo.heightPct}% - 4px)`
+                                  top: `${occInfo.topOffsetPct / (occInfo.rowSpan || 1)}%`,
+                                  bottom: `${occInfo.bottomOffsetPct / (occInfo.rowSpan || 1)}%`
                                 }}
                               >
                                 <button 
@@ -337,14 +373,14 @@ export default function App() {
                                   className={`w-full h-full p-2 rounded-lg text-xs font-semibold border text-left transition shadow-sm flex flex-col justify-center ${cardBgClass}`}
                                 >
                                   <div className="font-bold flex justify-between items-center">
-                                    <span>{res.student_name}</span> 
+                                    <span>{getDisplayNameAndId(res)}</span> 
                                     <span className="text-[10px] opacity-80">[{res.status}]</span>
                                   </div>
                                   <div className="text-[10px] opacity-80 mt-0.5">
                                     🕒 {res.time_in} – {res.time_out || 'In Session'}
                                   </div>
                                   <div className="text-[10px] opacity-75 mt-0.5">
-                                    {res.people} Person(s) {res.barcode && `• ${res.barcode}`}
+                                    {res.people} Person(s)
                                   </div>
                                 </button>
                               </div>
@@ -442,18 +478,18 @@ export default function App() {
               <div className="space-y-3 text-sm">
                 <div>
                   <label className="block font-semibold mb-1">Name</label>
-                  <input type="text" value={formData.student_name} onChange={(e) => setFormData({ ...formData, student_name: e.target.value })} className="w-full p-2 border rounded-lg" placeholder="Student name" />
+                  <input type="text" value={formData.student_name} onChange={(e) => setFormData({ ...formData, student_name: e.target.value })} className="w-full p-2 border border-slate-300 rounded-lg bg-white" placeholder="Student name" />
                 </div>
 
                 <div>
                   <label className="block font-semibold mb-1">ID Number</label>
-                  <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="w-full p-2 border rounded-lg" placeholder="e.g. w1234567" />
+                  <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="w-full p-2 border border-slate-300 rounded-lg bg-white" placeholder="e.g. w1234567" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold mb-1">Room</label>
-                    <select value={formData.room} onChange={(e) => setFormData({ ...formData, room: e.target.value })} className="w-full p-2 border rounded-lg">
+                    <select value={formData.room} onChange={(e) => setFormData({ ...formData, room: e.target.value })} className="w-full p-2 bg-white border border-slate-300 rounded-lg">
                       {ROOMS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
                   </div>
@@ -514,19 +550,24 @@ export default function App() {
 
                 <div>
                   <label className="block font-semibold mb-1">Notes</label>
-                  <input type="text" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full p-2 border rounded-lg" placeholder="Group study, laptop, etc." />
+                  <input type="text" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full p-2 border border-slate-300 rounded-lg bg-white" placeholder="Needs TV, webcam, etc." />
                 </div>
               </div>
 
               <div className="flex justify-between items-center pt-3 border-t">
-                {activeRes && activeRes.status === 'Reserved' && (
-                  <button onClick={() => handleCheckIn(activeRes)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-lg font-semibold">Check In Now</button>
-                )}
-                {activeRes && activeRes.status === 'Checked-In' && (
-                  <button onClick={() => handleCheckOut(activeRes)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-lg font-semibold">Check Out Now</button>
-                )}
+                <div className="flex gap-2">
+                  {activeRes && activeRes.status === 'Reserved' && (
+                    <>
+                      <button onClick={() => handleCheckIn(activeRes)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-lg font-semibold">Check In Now</button>
+                      <button onClick={() => handleCancelReservation(activeRes)} className="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3 py-2 rounded-lg font-semibold">Cancel Reservation</button>
+                    </>
+                  )}
+                  {activeRes && activeRes.status === 'Checked-In' && (
+                    <button onClick={() => handleCheckOut(activeRes)} className="bg-blue-600 hover:bg-blue-700 text-xs text-white px-3 py-2 rounded-lg font-semibold">Check Out Now</button>
+                  )}
+                </div>
                 <div className="flex gap-2 ml-auto">
-                  <button onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg text-slate-600">Cancel</button>
+                  <button onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded-lg text-slate-600">Close</button>
                   <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
                 </div>
               </div>
