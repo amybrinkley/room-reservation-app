@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { 
   Calendar, Clock, Users, User, PlusCircle, AlertCircle, CheckCircle2, 
   BarChart2, X, MapPin, Plus, Minus, Filter, RefreshCw, TrendingUp, 
-  CheckCircle, LogOut, Bookmark, PieChart as PieIcon, Activity, Flame
+  CheckCircle, LogOut, Bookmark, PieChart as PieIcon, Activity, Flame,
+  ChevronLeft, ChevronRight, DoorOpen
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, 
@@ -73,14 +74,14 @@ const INITIAL_RESERVATIONS = [
   { id: 'res_105', week: 'this_week', day: 'Wednesday', room: '31', slot: '1:30 PM', time_in: '1:30 PM', time_out: '', barcode: 'w2156737', student_name: 'Student 2', people: 1, any_room: false, status: 'Checked-In', notes: '' },
   { id: 'res_107', week: 'this_week', day: 'Wednesday', room: '33', slot: '9:00 AM', time_in: '9:00 AM', time_out: '11:00 AM', barcode: 'w2216701', student_name: 'Sarah', people: 1, any_room: true, status: 'Checked Out', notes: 'WebCam needed' },
   { id: 'res_110', week: 'this_week', day: 'Wednesday', room: '33', slot: '2:30 PM', time_in: '2:30 PM', time_out: '', barcode: 'w1889324', student_name: 'Ryan', people: 1, any_room: false, status: 'Checked-In', notes: '' },
-  { id: 'res_111', week: 'this_week', day: 'Wednesday', room: '33', slot: '4:30 PM', time_in: '4:30 PM', time_out: '6:30 PM', barcode: '', student_name: 'Roman', people: 1, any_room: false, status: 'Reserved', notes: '' },
+  { id: 'res_111', week: 'this_week', day: 'Wednesday', room: '33', slot: '4:30 PM', time_in: '4:30 PM', time_out: '6:30 PM', barcode: '', student_name: 'Roman', people: '', any_room: false, status: 'Reserved', notes: '' },
   { id: 'res_112', week: 'this_week', day: 'Wednesday', room: '34', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '', student_name: 'Lilly', people: 1, any_room: false, status: 'Checked Out', notes: '' },
   { id: 'res_116', week: 'this_week', day: 'Wednesday', room: '59', slot: '8:00 AM', time_in: '8:00 AM', time_out: '10:00 AM', barcode: '2218883', student_name: 'Zoey', people: 1, any_room: false, status: 'Checked Out', notes: '' },
   { id: 'res_119', week: 'this_week', day: 'Wednesday', room: '59', slot: '3:30 PM', time_in: '3:30 PM', time_out: '5:30 PM', barcode: '', student_name: 'Sarah', people: 2, any_room: true, status: 'Reserved', notes: '' },
   { id: 'res_201', week: 'this_week', day: 'Monday', room: '31', slot: '10:00 AM', time_in: '10:00 AM', time_out: '12:00 PM', barcode: 'w998123', student_name: 'Alex', people: 4, any_room: false, status: 'Checked Out', notes: 'Math project' },
   { id: 'res_202', week: 'this_week', day: 'Tuesday', room: '34', slot: '1:00 PM', time_in: '1:00 PM', time_out: '3:00 PM', barcode: 'w882190', student_name: 'Maria', people: 2, any_room: false, status: 'Checked Out', notes: '' },
   { id: 'res_203', week: 'this_week', day: 'Thursday', room: '59', slot: '11:00 AM', time_in: '11:00 AM', time_out: '1:00 PM', barcode: 'w119023', student_name: 'David', people: 5, any_room: false, status: 'Reserved', notes: 'Group discussion' },
-  { id: 'res_204', week: 'this_week', day: 'Friday', room: '33', slot: '2:00 PM', time_in: '2:00 PM', time_out: '4:00 PM', barcode: 'w334910', student_name: 'Chloe', people: 1, any_room: true, status: 'Reserved', notes: '' }
+  { id: 'res_204', week: 'this_week', day: 'Friday', room: '33', slot: '2:00 PM', time_in: '2:00 PM', time_out: '4:00 PM', barcode: 'w334910', student_name: 'Chloe', people: '', any_room: true, status: 'Reserved', notes: '' }
 ];
 
 const INITIAL_TURNAWAYS = [
@@ -114,12 +115,32 @@ export default function App() {
   const [analyticsStatus, setAnalyticsStatus] = useState('all');
 
   const [formData, setFormData] = useState({
-    room: '31', time_in: '8:00 AM', time_out: '', barcode: '', student_name: '', people: 1, any_room: false, notes: '', status: 'Reserved'
+    room: '31', time_in: '8:00 AM', time_out: '', barcode: '', student_name: '', people: '', any_room: false, notes: '', status: 'Reserved'
   });
 
   const handleResetToToday = () => {
     setSelectedWeek('this_week');
     setSelectedDay(getCurrentDayName());
+  };
+
+  const handlePrevDay = () => {
+    const currentIndex = DAYS_OF_WEEK.indexOf(selectedDay);
+    if (currentIndex > 0) {
+      setSelectedDay(DAYS_OF_WEEK[currentIndex - 1]);
+    } else if (selectedWeek === 'next_week') {
+      setSelectedWeek('this_week');
+      setSelectedDay(DAYS_OF_WEEK[DAYS_OF_WEEK.length - 1]);
+    }
+  };
+
+  const handleNextDay = () => {
+    const currentIndex = DAYS_OF_WEEK.indexOf(selectedDay);
+    if (currentIndex < DAYS_OF_WEEK.length - 1) {
+      setSelectedDay(DAYS_OF_WEEK[currentIndex + 1]);
+    } else if (selectedWeek === 'this_week') {
+      setSelectedWeek('next_week');
+      setSelectedDay(DAYS_OF_WEEK[0]);
+    }
   };
 
   const handleResetAnalyticsFilters = () => {
@@ -151,7 +172,7 @@ export default function App() {
   const handleOpenModal = (room = '31', initialSlot = '8:00 AM', existing = null) => {
     if (existing) {
       setActiveRes(existing);
-      setFormData({ any_room: false, ...existing });
+      setFormData({ any_room: false, ...existing, people: existing.people !== undefined && existing.people !== null ? existing.people : '' });
     } else {
       const startIdx = DETAILED_TIMES.indexOf(initialSlot) !== -1 ? DETAILED_TIMES.indexOf(initialSlot) : 0;
       
@@ -162,7 +183,7 @@ export default function App() {
         time_out: '', 
         barcode: '', 
         student_name: '', 
-        people: 1, 
+        people: '', 
         any_room: false,
         notes: '', 
         status: 'Reserved' 
@@ -172,12 +193,13 @@ export default function App() {
   };
 
   const handleSave = () => {
+    const numPeople = formData.people === '' ? '' : Number(formData.people);
     if (activeRes) {
-      setReservations(reservations.map(r => r.id === activeRes.id ? { ...r, ...formData, people: Number(formData.people) } : r));
+      setReservations(reservations.map(r => r.id === activeRes.id ? { ...r, ...formData, people: numPeople } : r));
     } else {
       const newRes = { 
         ...formData, 
-        people: Number(formData.people),
+        people: numPeople,
         id: 'res_' + Date.now(), 
         week: selectedWeek, 
         day: selectedDay, 
@@ -189,7 +211,8 @@ export default function App() {
   };
 
   const handleCheckIn = (res) => {
-    setReservations(reservations.map(r => r.id === res.id ? { ...r, status: 'Checked-In', time_out: '' } : r));
+    const numPeople = formData.people === '' ? '' : Number(formData.people);
+    setReservations(reservations.map(r => r.id === res.id ? { ...r, ...formData, people: numPeople, status: 'Checked-In', time_out: '' } : r));
     setModalOpen(false);
   };
 
@@ -322,17 +345,18 @@ export default function App() {
     const statuses = ['Reserved', 'Checked-In', 'Checked Out'];
     return statuses.map(st => ({
       name: st,
-      value: analyticsReservations.filter(r => r.room !== 'all' ? analyticsReservations.filter(r => r.status === st).length : 0),
+      value: analyticsReservations.filter(r => r.status === st).length,
       color: STATUS_COLORS[st]
     })).filter(item => item.value > 0);
   }, [analyticsReservations]);
 
-  // Heat Map Data 1: Booking Density (Days vs Time Slots)
+  // Heat Map Data 1: Booking Density (Days vs Time Slots + All Column)
   const occupancyHeatMap = useMemo(() => {
     let maxCount = 1;
     const grid = TIME_SLOTS.map(slot => {
       const row = { slot };
       const slotMins = parseTimeToMinutes(slot);
+      let totalSlotBookings = 0;
 
       DAYS_OF_WEEK.forEach(day => {
         const count = analyticsReservations.filter(res => {
@@ -343,24 +367,36 @@ export default function App() {
         }).length;
 
         row[day] = count;
+        totalSlotBookings += count;
         if (count > maxCount) maxCount = count;
       });
+
+      row['All'] = totalSlotBookings;
+      if (totalSlotBookings > maxCount) maxCount = totalSlotBookings;
+
       return row;
     });
 
     return { grid, maxCount };
   }, [analyticsReservations]);
 
-  // Heat Map Data 2: Turn-Away Intensity
+  // Heat Map Data 2: Turn-Away Intensity (Days vs Time Slots + All Column)
   const turnAwayHeatMap = useMemo(() => {
     let maxCount = 1;
     const grid = TIME_SLOTS.map(slot => {
       const row = { slot };
+      let totalSlotTurnAways = 0;
+
       DAYS_OF_WEEK.forEach(day => {
         const count = analyticsTurnAways.filter(ta => ta.day === day && ta.slot === slot).length;
         row[day] = count;
+        totalSlotTurnAways += count;
         if (count > maxCount) maxCount = count;
       });
+
+      row['All'] = totalSlotTurnAways;
+      if (totalSlotTurnAways > maxCount) maxCount = totalSlotTurnAways;
+
       return row;
     });
 
@@ -438,7 +474,7 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200">
-              <AlertCircle className="w-4 h-4 text-slate-400" /> Total Turn-Aways Today: <span className="text-sm font-bold text-white">{activeTurnAways.length}</span>
+              <DoorOpen className="w-4 h-4 text-slate-400" /> Total Turn-Aways Today: <span className="text-sm font-bold text-white">{activeTurnAways.length}</span>
             </div>
           </div>
         </div>
@@ -457,8 +493,27 @@ export default function App() {
               </button>
             </div>
 
-            <div className="text-base font-bold text-slate-700 hidden sm:block">
-              {getFormattedDateString(selectedDay, selectedWeek)}
+            {/* Date Display with Arrow Navigation & Increased Font Size */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handlePrevDay} 
+                className="p-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 transition shadow-sm"
+                title="Previous Day"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight text-center">
+                {getFormattedDateString(selectedDay, selectedWeek)}
+              </div>
+
+              <button 
+                onClick={handleNextDay} 
+                className="p-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 transition shadow-sm"
+                title="Next Day"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -544,7 +599,9 @@ export default function App() {
                                     🕒 {res.time_in} – {res.time_out || 'In Session'}
                                   </div>
                                   <div className="text-[10px] opacity-75 mt-0.5">
-                                    {res.people} Person(s)
+                                    {res.people !== '' && res.people !== null && res.people !== undefined 
+                                      ? `${res.people} Person(s)` 
+                                      : 'People: Unspecified'}
                                   </div>
                                 </button>
                               </div>
@@ -694,7 +751,7 @@ export default function App() {
                   <h3 className="text-2xl font-bold text-slate-900 mt-1">{totalFilteredTurnAways}</h3>
                 </div>
                 <div className="p-3 bg-rose-50 rounded-lg border border-rose-100">
-                  <AlertCircle className="w-6 h-6 text-rose-600" />
+                  <DoorOpen className="w-6 h-6 text-rose-600" />
                 </div>
               </div>
 
@@ -728,13 +785,14 @@ export default function App() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-center text-xs border-collapse min-w-[400px]">
+                  <table className="w-full text-center text-xs border-collapse min-w-[450px]">
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-600">
                         <th className="p-2 text-left font-semibold">Time</th>
                         {DAYS_OF_WEEK.map(day => (
                           <th key={day} className="p-2 font-semibold">{day.substring(0, 3)}</th>
                         ))}
+                        <th className="p-2 font-bold text-blue-800 bg-blue-50/50 rounded-t">All</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -752,6 +810,11 @@ export default function App() {
                               </td>
                             );
                           })}
+                          <td className="p-1 bg-blue-50/30">
+                            <div className={`py-1.5 rounded transition ${getHeatMapColor(row['All'], occupancyHeatMap.maxCount, 'booking')}`} title={`Total at ${row.slot} across all days: ${row['All']}`}>
+                              {row['All']}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -776,13 +839,14 @@ export default function App() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-center text-xs border-collapse min-w-[400px]">
+                  <table className="w-full text-center text-xs border-collapse min-w-[450px]">
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-600">
                         <th className="p-2 text-left font-semibold">Time</th>
                         {DAYS_OF_WEEK.map(day => (
                           <th key={day} className="p-2 font-semibold">{day.substring(0, 3)}</th>
                         ))}
+                        <th className="p-2 font-bold text-rose-800 bg-rose-50/50 rounded-t">All</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -800,6 +864,11 @@ export default function App() {
                               </td>
                             );
                           })}
+                          <td className="p-1 bg-rose-50/30">
+                            <div className={`py-1.5 rounded transition ${getHeatMapColor(row['All'], turnAwayHeatMap.maxCount, 'turnaway')}`} title={`Total turn-aways at ${row.slot} across all days: ${row['All']}`}>
+                              {row['All']}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -886,9 +955,10 @@ export default function App() {
                     <label className="block font-semibold mb-1">Number of People</label>
                     <select 
                       value={formData.people} 
-                      onChange={(e) => setFormData({ ...formData, people: Number(e.target.value) })} 
+                      onChange={(e) => setFormData({ ...formData, people: e.target.value })} 
                       className="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500"
                     >
+                      <option value=""></option>
                       {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
                         <option key={num} value={num}>
                           {num} {num === 1 ? 'Person' : 'People'}
