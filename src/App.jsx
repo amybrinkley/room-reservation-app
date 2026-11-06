@@ -109,7 +109,9 @@ export default function App() {
   const [activeRes, setActiveRes] = useState(null);
 
   // Analytics Dashboard Filter State
-  const [analyticsWeek, setAnalyticsWeek] = useState('all');
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState('all');
+  const [analyticsStartDate, setAnalyticsStartDate] = useState('');
+  const [analyticsEndDate, setAnalyticsEndDate] = useState('');
   const [analyticsDay, setAnalyticsDay] = useState('all');
   const [analyticsRoom, setAnalyticsRoom] = useState('all');
   const [analyticsStatus, setAnalyticsStatus] = useState('all');
@@ -144,7 +146,9 @@ export default function App() {
   };
 
   const handleResetAnalyticsFilters = () => {
-    setAnalyticsWeek('all');
+    setAnalyticsTimeframe('all');
+    setAnalyticsStartDate('');
+    setAnalyticsEndDate('');
     setAnalyticsDay('all');
     setAnalyticsRoom('all');
     setAnalyticsStatus('all');
@@ -289,21 +293,27 @@ export default function App() {
   // ---------------- ANALYTICS COMPUTATIONS ----------------
   const analyticsReservations = useMemo(() => {
     return reservations.filter(res => {
-      if (analyticsWeek !== 'all' && res.week !== analyticsWeek) return false;
+      if (analyticsTimeframe !== 'all') {
+        if (analyticsTimeframe === 'this_week' && res.week !== 'this_week') return false;
+        if (analyticsTimeframe === 'next_week' && res.week !== 'next_week') return false;
+      }
       if (analyticsDay !== 'all' && res.day !== analyticsDay) return false;
       if (analyticsRoom !== 'all' && res.room !== analyticsRoom) return false;
       if (analyticsStatus !== 'all' && res.status !== analyticsStatus) return false;
       return true;
     });
-  }, [reservations, analyticsWeek, analyticsDay, analyticsRoom, analyticsStatus]);
+  }, [reservations, analyticsTimeframe, analyticsDay, analyticsRoom, analyticsStatus]);
 
   const analyticsTurnAways = useMemo(() => {
     return turnAways.filter(ta => {
-      if (analyticsWeek !== 'all' && ta.week !== analyticsWeek) return false;
+      if (analyticsTimeframe !== 'all') {
+        if (analyticsTimeframe === 'this_week' && ta.week !== 'this_week') return false;
+        if (analyticsTimeframe === 'next_week' && ta.week !== 'next_week') return false;
+      }
       if (analyticsDay !== 'all' && ta.day !== analyticsDay) return false;
       return true;
     });
-  }, [turnAways, analyticsWeek, analyticsDay]);
+  }, [turnAways, analyticsTimeframe, analyticsDay]);
 
   const totalFilteredBookings = analyticsReservations.length;
   const totalFilteredPeople = analyticsReservations.reduce((acc, curr) => acc + (Number(curr.people) || 0), 0);
@@ -339,16 +349,6 @@ export default function App() {
       turnAways: analyticsTurnAways.filter(t => t.day === day).length
     }));
   }, [analyticsReservations, analyticsTurnAways]);
-
-  // Chart Data 4: Status Breakdown
-  const statusBreakdownData = useMemo(() => {
-    const statuses = ['Reserved', 'Checked-In', 'Checked Out'];
-    return statuses.map(st => ({
-      name: st,
-      value: analyticsReservations.filter(r => r.status === st).length,
-      color: STATUS_COLORS[st]
-    })).filter(item => item.value > 0);
-  }, [analyticsReservations]);
 
   // Heat Map Data 1: Booking Density (Days vs Time Slots + All Column)
   const occupancyHeatMap = useMemo(() => {
@@ -483,37 +483,34 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {activeTab === 'schedule' && (
           <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-4">
-            <div className="flex items-center gap-2">
+            {/* Today Button & Navigation Arrows grouped together */}
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleResetToToday}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm transition shadow-sm"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-sm transition shadow-sm mr-1"
                 title="Return schedule to today"
               >
                 Today
               </button>
-            </div>
-
-            {/* Date Display with Arrow Navigation & Increased Font Size */}
-            <div className="flex items-center gap-3">
               <button 
                 onClick={handlePrevDay} 
                 className="p-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 transition shadow-sm"
                 title="Previous Day"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
-
-              <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight text-center">
-                {getFormattedDateString(selectedDay, selectedWeek)}
-              </div>
-
               <button 
                 onClick={handleNextDay} 
                 className="p-2 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 transition shadow-sm"
                 title="Next Day"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Centered Large Date Display */}
+            <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight text-center">
+              {getFormattedDateString(selectedDay, selectedWeek)}
             </div>
 
             <div className="flex items-center gap-3">
@@ -650,7 +647,7 @@ export default function App() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Filter Toolbar */}
+            {/* Filter Toolbar with Comprehensive Options */}
             <div className="bg-white p-5 rounded-xl shadow border border-slate-200">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
                 <div className="flex items-center gap-2">
@@ -665,18 +662,39 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Timeframe (Week)</label>
                   <select 
-                    value={analyticsWeek} 
-                    onChange={(e) => setAnalyticsWeek(e.target.value)} 
+                    value={analyticsTimeframe} 
+                    onChange={(e) => setAnalyticsTimeframe(e.target.value)} 
                     className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="all">All Weeks</option>
+                    <option value="all">All Time</option>
                     <option value="this_week">This Week</option>
-                    <option value="next_week">Next Week</option>
+                    <option value="this_month">This Month</option>
+                    <option value="this_year">This Year</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
+                  <input 
+                    type="date"
+                    value={analyticsStartDate} 
+                    onChange={(e) => setAnalyticsStartDate(e.target.value)} 
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
+                  <input 
+                    type="date"
+                    value={analyticsEndDate} 
+                    onChange={(e) => setAnalyticsEndDate(e.target.value)} 
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
 
                 <div>
@@ -851,7 +869,7 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {turnAwayHeatMap.grid.map(row => (
-                        <tr key={row.slot} className="hover:bg-white">
+                        <tr key={row.slot} className="hover:bg-slate-50">
                           <td className="p-2 text-left font-medium text-slate-500 whitespace-nowrap">{row.slot}</td>
                           {DAYS_OF_WEEK.map(day => {
                             const count = row[day];
