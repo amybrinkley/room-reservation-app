@@ -5,6 +5,7 @@ import {
   CheckCircle, LogOut, Bookmark, PieChart as PieIcon, Activity, Flame,
   ChevronLeft, ChevronRight, DoorOpen
 } from 'lucide-react';
+
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, 
   PieChart, Pie, Cell, Legend 
